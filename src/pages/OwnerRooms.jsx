@@ -672,7 +672,7 @@ const OwnerRooms = () => {
                       />
                     </div>
                   </div>
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       รหัสห้อง
                     </label>
@@ -685,10 +685,10 @@ const OwnerRooms = () => {
                       }
                       required
                     />
-                  </div>
+                  </div> */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      สิ่งอำนวยความสะดวก
+                      ประเภทห้อง
                     </label>
                     <div className="space-y-2">
                       <label className="flex items-center">

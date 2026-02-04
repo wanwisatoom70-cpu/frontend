@@ -175,7 +175,7 @@ const RoomPrices = () => {
           <div className="flex items-center space-x-2 mt-2 sm:mt-0">
             <input
               type="text"
-              placeholder="ค้นหารหัสห้อง,หอ,ห้อง..."
+              placeholder="ค้นหาหอ,ห้อง..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="px-3 py-1 rounded-md text-gray-800 focus:outline-none"
@@ -193,7 +193,7 @@ const RoomPrices = () => {
                     {[
                       { icon: "fa-building", label: "หอพัก" },
                       { icon: "fa-bed", label: "ห้อง" },
-                      { icon: "fa-key", label: "รหัส" },
+                      // { icon: "fa-key", label: "รหัส" },
                       { icon: "fa-calendar-week", label: "รายเดือน" },
                       { icon: "fa-calendar", label: "รายเทอม" },
                       { icon: "fa-receipt", label: "การแจ้งบิล" },
@@ -228,9 +228,9 @@ const RoomPrices = () => {
                         <td className="px-6 py-4 border border-gray-200 text-sm text-gray-900">
                           {room.name}
                         </td>
-                        <td className="px-6 py-4 border border-gray-200 text-sm text-gray-900">
+                        {/* <td className="px-6 py-4 border border-gray-200 text-sm text-gray-900">
                           {room.code}
-                        </td>
+                        </td> */}
                         <td className="px-6 py-4 border border-gray-200 text-sm text-gray-900">
                           {room.price_monthly?.toLocaleString() || "-"}
                         </td>

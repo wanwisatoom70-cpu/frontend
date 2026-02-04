@@ -367,7 +367,7 @@ const FurnitureModal = ({
           {rooms.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                เลือกห้อง (ค้นหาด้วยรหัสห้อง)
+                เลือกห้อง (ค้นหาด้วยห้อง)
               </label>
               <input
                 list="room-list"

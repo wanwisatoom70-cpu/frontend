@@ -40,7 +40,7 @@ const Home = () => {
             {/* Image container with styling */}
             <div className="relative bg-white p-1 rounded-2xl shadow-lg">
               <img
-                src="../../upload/12.jpg"
+                src="/upload/12.jpg"
                 alt="logo"
                 className="w-58 h-32 object-cover rounded-xl"
               />

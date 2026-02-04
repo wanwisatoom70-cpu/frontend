@@ -216,14 +216,14 @@ const Packages = ({ role }) => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
+                      {/* <div>
                         <h3 className="text-sm font-medium text-gray-700 mb-1">
                           ราคา
                         </h3>
                         <p className="text-lg font-bold text-indigo-600">
                           {pkg.price ? `฿${pkg.price}` : "ไม่ระบุ"}
                         </p>
-                      </div>
+                      </div> */}
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
                           <h3 className="text-sm font-medium text-gray-700 mb-1">

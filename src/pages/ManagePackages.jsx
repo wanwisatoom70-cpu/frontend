@@ -371,9 +371,9 @@ const ManagePackages = ({ role }) => {
                       ชื่อพัสดุ : {pkg.name || "ไม่ระบุ"}
                     </p>
                     <div className="flex justify-between items-center">
-                      <p className="text-sm text-gray-600">
+                      {/* <p className="text-sm text-gray-600">
                         ราคา: {pkg.price ? `฿${pkg.price}` : "ไม่ระบุ"}
-                      </p>
+                      </p> */}
                       <div>
                       <p className="text-sm text-gray-600">
                         วันที่บันทึก: {formatDate(pkg.created_at)}
@@ -486,7 +486,7 @@ const ManagePackages = ({ role }) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ผู้รับพัสดุ
+                    ห้องพัก
                   </label>
 
                   <Select
@@ -497,7 +497,7 @@ const ManagePackages = ({ role }) => {
                       setSelectedReceivers(selected ? [selected] : [])
                     } // เก็บเป็น array 1 คน
                     isSearchable
-                    placeholder="เลือกผู้รับพัสดุ"
+                    placeholder="เลือกห้องพัก"
                     className="basic-single"
                     classNamePrefix="select"
                   />
@@ -530,7 +530,7 @@ const ManagePackages = ({ role }) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   ></textarea>
                 </div>
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     ราคา
                   </label>
@@ -542,7 +542,7 @@ const ManagePackages = ({ role }) => {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
-                </div>
+                </div> */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     ทรัพย์สิน
@@ -623,7 +623,7 @@ const ManagePackages = ({ role }) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ผู้รับพัสดุ
+                    ห้องพัก
                   </label>
 
                   <Select
@@ -634,7 +634,7 @@ const ManagePackages = ({ role }) => {
                       setSelectedReceivers(selected ? [selected] : [])
                     } // เก็บเป็น array 1 คน
                     isSearchable
-                    placeholder="เลือกผู้รับพัสดุ"
+                    placeholder="เลือกห้องพัก"
                     className="basic-single"
                     classNamePrefix="select"
                   />
@@ -667,7 +667,7 @@ const ManagePackages = ({ role }) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   ></textarea>
                 </div>
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     ราคา
                   </label>
@@ -679,10 +679,10 @@ const ManagePackages = ({ role }) => {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
-                </div>
+                </div> */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ทรัพย์สิน
+                    หอพัก
                   </label>
                   {receiverProperty ? (
                     // แสดง readonly ถ้ามีผู้เช่าแล้ว
@@ -711,7 +711,7 @@ const ManagePackages = ({ role }) => {
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     >
-                      <option value="">เลือกทรัพย์สิน</option>
+                      <option value="">เลือกหอพัก</option>
                       {properties.map((prop) => (
                         <option key={prop.id} value={prop.id}>
                           {prop.name}

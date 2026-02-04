@@ -2,6 +2,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import API from "../api";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const OwnerTenant = () => {
   const [tenants, setTenants] = useState([]);
@@ -32,6 +34,19 @@ const OwnerTenant = () => {
   // เพิ่ม state สำหรับเก็บห้องที่แสดงในการ์ด
   const [expandedRoomCards, setExpandedRoomCards] = useState({});
   const [showGuestsOnly, setShowGuestsOnly] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    show: false,
+    message: "",
+    onConfirm: null,
+  });
+  const showConfirmModal = (message, onConfirm) => {
+    setConfirmModal({ show: true, message, onConfirm });
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModal({ show: false, message: "", onConfirm: null });
+  };
+
   // เพิ่มฟังก์ชันสำหรับตรวจสอบ username
   const checkUsernameAvailability = useCallback(
     async (username) => {
@@ -227,15 +242,17 @@ const OwnerTenant = () => {
 
       if (editingTenant) {
         await API.put(`/tenants/${editingTenant.id}`, tenantData);
+        toast.success("แก้ไขข้อมูลผู้เช่าสำเร็จ");
       } else {
         await API.post("/tenants", tenantData);
+        toast.success("เพิ่มผู้เช่าสำเร็จ");
       }
 
       setModalOpen(false);
       fetchTenants();
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+      toast.error("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
     }
   };
 
@@ -262,15 +279,30 @@ const OwnerTenant = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("คุณแน่ใจหรือไม่ที่จะลบผู้เช่านี้?")) return;
-    try {
-      await API.delete(`/tenants/${id}`);
-      fetchTenants();
-    } catch (err) {
-      console.error(err);
-      alert("เกิดข้อผิดพลาดในการลบข้อมูล");
-    }
+  const handleAdd = (id) => {
+    showConfirmModal("คุณแน่ใจหรือไม่ที่จะเพิ่มผู้เช่านี้?", async () => {
+      try {
+        await API.put(`/tenants/confirm/${id}`);
+        toast.success("ยืนยันการเพิ่มผู้เช่าสำเร็จ");
+        fetchTenants();
+      } catch (err) {
+        console.error(err);
+        toast.error("เกิดข้อผิดพลาดในการเพิ่มข้อมูลผู้เช่า");
+      }
+    });
+  };
+
+  const handleDelete = (id) => {
+    showConfirmModal("คุณแน่ใจหรือไม่ที่จะลบผู้เช่านี้?", async () => {
+      try {
+        await API.delete(`/tenants/${id}`);
+        toast.success("ลบผู้เช่าสำเร็จ");
+        fetchTenants();
+      } catch (err) {
+        console.error(err);
+        toast.error("เกิดข้อผิดพลาดในการลบข้อมูล");
+      }
+    });
   };
 
   // เพิ่มฟังก์ชันสำหรับขยาย/ย่อการ์ดห้อง
@@ -282,13 +314,13 @@ const OwnerTenant = () => {
   };
 
   const filteredTenants = tenants.filter((tenant) => {
-    // ถ้า checkbox ถูกติ๊ก ให้แสดงเฉพาะ guest
+    // ถ้า checkbox ถูกติ๊ก ให้แสดงเฉพาะ pending
     if (showGuestsOnly) {
       return tenant.role === "guest";
     }
 
-    // ถ้า checkbox ไม่ติ๊ก แสดงเฉพาะ tenant/owner/staff (ไม่เอา guest)
-    if (tenant.role === "guest") return false;
+    // ถ้า checkbox ไม่ติ๊ก แสดงเฉพาะ tenant (ไม่เอา guest)
+    if (tenant.role !== "tenant") return false;
 
     const username = tenant.username?.toLowerCase() || "";
     const fullname = tenant.fullname?.toLowerCase() || "";
@@ -352,17 +384,21 @@ const OwnerTenant = () => {
             </div>
 
             {/* Checkbox */}
-            <div className="flex items-center space-x-2">
+            {/* <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="showGuestsOnly"
                 checked={showGuestsOnly}
                 onChange={(e) => setShowGuestsOnly(e.target.checked)}
+                className="cursor-pointer"
               />
-              <label htmlFor="showGuestsOnly" className="text-gray-700">
-                แสดงเฉพาะผู้ใช้ทั่วไป
+              <label
+                htmlFor="showGuestsOnly"
+                className="text-gray-700 cursor-pointer"
+              >
+                ผู้ที่รออนุมัติ
               </label>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
@@ -549,7 +585,7 @@ const OwnerTenant = () => {
                                 </span>
                                 <span className="text-xs text-gray-500">
                                   {new Date(
-                                    booking.start_date
+                                    booking.created_at
                                   ).toLocaleDateString("th-TH", {
                                     year: "numeric",
                                     month: "short",
@@ -600,20 +636,31 @@ const OwnerTenant = () => {
                     </div>
 
                     <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleOpenModal(t)}
-                        className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 hover:bg-yellow-200 transition-colors duration-200"
-                        title="แก้ไข"
-                      >
-                        <i className="fas fa-edit text-sm"></i>
-                      </button>
-                      {t.role !== "guest" && (
+                      {t.role === "tenant" && (
+                        <button
+                          onClick={() => handleOpenModal(t)}
+                          className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 hover:bg-yellow-200 transition-colors duration-200"
+                          title="แก้ไข"
+                        >
+                          <i className="fas fa-edit text-sm"></i>
+                        </button>
+                      )}
+                      {t.role === "tenant" && (
                         <button
                           onClick={() => handleDelete(t.id)}
                           className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 hover:bg-red-200 transition-colors duration-200"
                           title="ลบ"
                         >
                           <i className="fas fa-trash-alt text-sm"></i>
+                        </button>
+                      )}
+                      {t.role !== "tenant" && (
+                        <button
+                          onClick={() => handleAdd(t.id)}
+                          className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 hover:bg-green-200 transition-colors duration-200"
+                          title="ยืนยันการเช่า"
+                        >
+                          <i className="fas fa-check text-sm"></i>
                         </button>
                       )}
                     </div>
@@ -625,10 +672,10 @@ const OwnerTenant = () => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* add edit */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-300 scale-95 animate-scaleIn">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-300 scale-95 animate-fade-in-right">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold font-kanit">
@@ -767,7 +814,7 @@ const OwnerTenant = () => {
                       />
                     </div>
 
-                    <div>
+                    {/* <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         สถานะสัญญา
                       </label>
@@ -781,7 +828,7 @@ const OwnerTenant = () => {
                         <option value="confirmed">ยืนยันแล้ว</option>
                         <option value="pending">รอดำเนินการ</option>
                       </select>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
 
@@ -859,7 +906,7 @@ const OwnerTenant = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    รอบเก็บเงิน
+                    ประเภทการเช่า
                   </label>
                   {form.selectedRooms.map((roomId) => {
                     const room = rooms.find((r) => r.id === roomId);
@@ -906,6 +953,41 @@ const OwnerTenant = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 transform transition-all scale-95 animate-fadeIn">
+            <div className="flex items-center mb-4">
+              <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mr-3">
+                <i className="fas fa-exclamation-triangle text-yellow-500 text-xl"></i>
+              </div>
+              <h3 className="text-lg font-bold font-kanit text-gray-800">
+                ยืนยันการดำเนินการ
+              </h3>
+            </div>
+
+            <p className="text-gray-600 mb-6">{confirmModal.message}</p>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeConfirmModal}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  closeConfirmModal();
+                }}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all"
+              >
+                ยืนยัน
+              </button>
             </div>
           </div>
         </div>

@@ -163,7 +163,7 @@ const Login = () => {
               </button>
             </form>
 
-            {/* สมัครสมาชิก */}
+            {/* สมัครสมาชิก
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 ยังไม่มีบัญชี?{" "}
@@ -174,7 +174,7 @@ const Login = () => {
                   สมัครสมาชิก
                 </Link>
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

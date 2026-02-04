@@ -4,6 +4,8 @@ import Layout from "../components/Layout";
 import API from "../api";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const PropertyDetail = () => {
   const [property, setProperty] = useState(null);
@@ -15,6 +17,12 @@ const PropertyDetail = () => {
   const location = useLocation();
   const propertyId = location.state?.propertyId;
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [billingCycle, setBillingCycle] = useState("");
+  const [moveInDate, setMoveInDate] = useState("");
+  const [moveOutDate, setMoveOutDate] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,6 +38,51 @@ const PropertyDetail = () => {
     };
     fetchData();
   }, [propertyId]);
+  const handleBookRoom = (room) => {
+    setSelectedRoom(room);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmBooking = async () => {
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+
+    if (!token || !userId) {
+      toast.info("กรุณาเข้าสู่ระบบก่อนทำการจอง");
+      navigate("/login");
+      return;
+    }
+
+    if (!billingCycle || !moveInDate || !moveOutDate) {
+      toast.error("❌ กรุณากรอกข้อมูลให้ครบก่อนยืนยันการจอง");
+      return;
+    }
+
+    const bookingData = {
+      user_id: userId,
+      room_id: selectedRoom.id,
+      start_date: moveInDate,
+      end_date: moveOutDate,
+      billing_cycle: billingCycle,
+      status: "pending",
+    };
+
+    try {
+      await API.post("/bookings", bookingData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success("✅ จองห้องเรียบร้อยแล้ว (รอการยืนยันจากเจ้าของหรือพนักงาน)");
+      setShowConfirmModal(false);
+      setBillingCycle("");
+      setMoveInDate("");
+      setMoveOutDate("");
+    } catch (error) {
+      console.error("❌ Booking Error:", error);
+      toast.error("❌ ไม่สามารถจองห้องได้ กรุณาลองใหม่อีกครั้ง");
+    }
+  };
+
   const openImageModal = (images) => {
     setSelectedRoomImages(images || []);
     setModalOpen(true);
@@ -252,8 +305,19 @@ const PropertyDetail = () => {
                   </div>
 
                   <div className="flex space-x-4">
-                    <button className="flex-1 bg-gradient-to-r from-primary to-accent text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300">
-                      <i className="fas fa-phone-alt mr-2"></i> ติดต่อเจ้าของ
+                    <button
+                      className="flex-1 bg-gradient-to-r from-primary to-accent text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300"
+                      onClick={() => {
+                        const token = localStorage.getItem("token");
+                        if (!token) {
+                          toast.info("กรุณาเข้าสู่ระบบก่อนทำการจอง");
+                          // navigate("/login");
+                          return;
+                        }
+                        setShowBookingModal(true);
+                      }}
+                    >
+                      <i className="fas fa-clipboard-list mr-2"></i> จองห้อง
                     </button>
                     <button className="flex-1 bg-white border border-primary text-primary py-3 rounded-lg font-medium hover:bg-indigo-50 transition-all duration-300">
                       <i className="fas fa-calendar-check mr-2"></i> นัดชมห้อง
@@ -682,6 +746,272 @@ const PropertyDetail = () => {
           )}
         </div>
       </div>
+      {/* ===== Modal จองห้อง ===== */}
+      {showBookingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl overflow-hidden animate-fadeIn">
+            {/* Header */}
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-bold text-primary">
+                🏠 รายการห้องที่สามารถจองได้
+              </h2>
+              <button
+                onClick={() => setShowBookingModal(false)}
+                className="text-gray-500 hover:text-red-500"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            {/* Table แสดงห้อง */}
+            <div className="overflow-x-auto max-h-[70vh]">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      ชื่อห้อง
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      รายเดือน
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      รายเทอม
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      เงินประกัน
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      สิ่งอำนวยความสะดวก
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      + จองห้อง
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {property.rooms && property.rooms.length > 0 ? (
+                    property.rooms.filter((room) => room.status === "available")
+                      .length > 0 ? (
+                      property.rooms
+                        .filter((room) => room.status === "available")
+                        .map((room) => (
+                          <tr key={room.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {room.name || room.code}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-primary">
+                              ฿
+                              {room.price_monthly != null
+                                ? Number(room.price_monthly).toLocaleString(
+                                    "en-US",
+                                    {
+                                      minimumFractionDigits: 2,
+                                    }
+                                  )
+                                : "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-primary">
+                              ฿
+                              {room.price_term != null
+                                ? Number(room.price_term).toLocaleString(
+                                    "en-US",
+                                    {
+                                      minimumFractionDigits: 2,
+                                    }
+                                  )
+                                : "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-primary">
+                              ฿
+                              {room.deposit != null
+                                ? Number(room.deposit).toLocaleString("en-US", {
+                                    minimumFractionDigits: 2,
+                                  })
+                                : "-"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              <span className="mr-2">
+                                <i
+                                  className={`fas fa-snowflake ${
+                                    room.has_ac
+                                      ? "text-blue-500"
+                                      : "text-gray-300"
+                                  }`}
+                                ></i>
+                                {room.has_ac ? " แอร์" : " -"}
+                              </span>
+                              <span className="mr-2">
+                                <i
+                                  className={`fas fa-fan ${
+                                    room.has_fan
+                                      ? "text-blue-500"
+                                      : "text-gray-300"
+                                  }`}
+                                ></i>
+                                {room.has_fan ? " พัดลม" : " -"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <button
+                                onClick={() => handleBookRoom(room)}
+                                className="bg-gradient-to-r from-primary to-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:shadow-md hover:scale-105 transition-all duration-300"
+                              >
+                                <i className="fa-solid fa-calendar-plus mr-2"></i>{" "}
+                                จองห้อง
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan="5"
+                          className="px-6 py-4 text-center text-gray-400"
+                        >
+                          ❌ ไม่มีห้องว่าง
+                        </td>
+                      </tr>
+                    )
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        className="px-6 py-4 text-center text-gray-400"
+                      >
+                        ไม่มีข้อมูลห้อง
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="flex flex-col items-end p-4 border-t space-y-2">
+              <div className="w-full text-left bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm rounded-md px-3 py-2">
+                ⚠️ <span className="font-semibold">คำเตือน:</span>
+                กรุณาติดต่อเจ้าของหรือพนักงานก่อนทำการจอง
+                เนื่องจากสิทธิ์ของคุณอาจถูกปลดอัตโนมัติหากไม่ได้รับการยืนยัน
+              </div>
+
+              <button
+                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+                onClick={() => setShowBookingModal(false)}
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showConfirmModal && selectedRoom && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 animate-fadeIn">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h2 className="text-lg font-bold text-primary">
+                <i className="fa-solid fa-calendar-check mr-2"></i>{" "}
+                ยืนยันการจองห้อง
+              </h2>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="text-gray-500 hover:text-red-500"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* เนื้อหา */}
+            <div className="space-y-4">
+              <p className="text-gray-700">
+                <span className="font-semibold">ชื่อห้อง:</span>{" "}
+                {selectedRoom.name || selectedRoom.code}
+              </p>
+
+              {/* ตัวเลือกแบบรายเดือน/รายเทอม */}
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  เลือกรูปแบบการจอง
+                </label>
+                <select
+                  value={billingCycle}
+                  onChange={(e) => setBillingCycle(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">-- เลือกรูปแบบ --</option>
+                  <option value="monthly">รายเดือน</option>
+                  <option value="term">รายเทอม</option>
+                </select>
+              </div>
+
+              {/* แสดงราคาตามที่เลือก */}
+              {billingCycle && (
+                <p className="text-gray-700">
+                  <span className="font-semibold">
+                    ราคาต่อ{billingCycle === "monthly" ? "เดือน" : "เทอม"}:
+                  </span>{" "}
+                  <span className="text-primary font-bold">
+                    ฿
+                    {Number(
+                      billingCycle === "monthly"
+                        ? selectedRoom.price_monthly
+                        : selectedRoom.price_term
+                    ).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                </p>
+              )}
+
+              {/* วันที่เข้า-ออก */}
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  วันที่เข้าอยู่
+                </label>
+                <input
+                  type="date"
+                  value={moveInDate}
+                  onChange={(e) => setMoveInDate(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  วันที่ออก
+                </label>
+                <input
+                  type="date"
+                  value={moveOutDate}
+                  onChange={(e) => setMoveOutDate(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="bg-yellow-50 text-yellow-800 text-sm p-2 rounded-md border border-yellow-300">
+                ⚠️ ถ้าคุณติดต่อเจ้าของหรือพนักงานแล้วสามารถทำการจองได้เลย!
+              </div>
+            </div>
+
+            {/* ปุ่ม */}
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleConfirmBooking}
+                className="bg-gradient-to-r from-primary to-accent text-white px-4 py-2 rounded-lg hover:shadow-md hover:scale-105 transition-all"
+              >
+                ยืนยันการจอง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal รูปหอ*/}
       {imageModalOpen && (
         <div

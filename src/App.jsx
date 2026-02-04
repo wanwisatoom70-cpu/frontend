@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import API, { setUnauthorizedHandler } from "./api";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import SessionExpiredModal from "./components/SessionExpiredModal";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -55,7 +57,13 @@ function App() {
     <Router>
       {/* Global Session Expired Modal */}
       <SessionExpiredModal show={showSessionExpired} onConfirm={handleLogout} />
-
+      {/* ✅ Global ToastContainer ใช้ได้ทุกหน้า */}
+      <ToastContainer
+        position="top-right"
+        autoClose={2500}
+        theme="colored"
+        hideProgressBar
+      />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />

@@ -20,6 +20,46 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [imageInputType, setImageInputType] = useState("file"); // 'file' or 'url'
   const [role, setRole] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState(null);
+  // null | "checking" | "valid" | "invalid"
+  const [usernameMessage, setUsernameMessage] = useState("");
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    if (!username || username.length < 4) {
+      setUsernameStatus(null);
+      setUsernameMessage("");
+      return;
+    }
+
+    const userId = localStorage.getItem("userId");
+
+    const delay = setTimeout(async () => {
+      try {
+        setUsernameStatus("checking");
+
+        const res = await API.get(
+          `/users/check-username/${username}?userId=${userId}`,
+        );
+
+        if (res.data.valid) {
+          setUsernameStatus("valid");
+          setUsernameMessage(res.data.message);
+        } else {
+          setUsernameStatus("invalid");
+          setUsernameMessage(res.data.message);
+        }
+      } catch (err) {
+        console.error(err);
+        setUsernameStatus("invalid");
+        setUsernameMessage("ไม่สามารถตรวจสอบ Username ได้");
+      }
+    }, 500); // debounce 500ms
+
+    return () => clearTimeout(delay);
+  }, [username, isEditing]);
+
   // ฟังก์ชันโชว์ toast
   const showToast = (text, type = "success") => {
     setToast({ text, type });
@@ -82,7 +122,7 @@ const Profile = () => {
     }
 
     // ตรวจสอบ ID Line สำหรับ tenant
-    if ((role === "tenant") && !idLine.trim()) {
+    if (role === "tenant" && !idLine.trim()) {
       return showToast("กรุณากรอก User ID Line", "error");
     }
 
@@ -401,24 +441,50 @@ const Profile = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          ชื่อผู้ใช้ {isEditing && <span className="text-red-500">*</span>}
+                          ชื่อผู้ใช้{" "}
+                          {isEditing && <span className="text-red-500">*</span>}
                         </label>
                         <input
                           type="text"
-                          className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                            isEditing
-                              ? "bg-white border-gray-300"
-                              : "bg-gray-50 border-gray-200"
-                          }`}
+                          className={`w-full border rounded-lg px-3 py-2 focus:ring-2
+                            ${
+                              usernameStatus === "valid"
+                                ? "border-green-500 focus:ring-green-500"
+                                : usernameStatus === "invalid"
+                                  ? "border-red-500 focus:ring-red-500"
+                                  : "border-gray-300 focus:ring-indigo-500"
+                            }
+                            ${isEditing ? "bg-white" : "bg-gray-50"}
+                          `}
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
-                          required
                           disabled={!isEditing}
+                          required
                         />
+
+                        {/* สถานะใต้ช่อง */}
+                        {usernameStatus === "checking" && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            กำลังตรวจสอบ...
+                          </p>
+                        )}
+
+                        {usernameStatus === "valid" && (
+                          <p className="text-sm text-green-600 mt-1">
+                            ✔ {usernameMessage}
+                          </p>
+                        )}
+
+                        {usernameStatus === "invalid" && (
+                          <p className="text-sm text-red-600 mt-1">
+                            ✖ {usernameMessage}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          ชื่อ-นามสกุล {isEditing && <span className="text-red-500">*</span>}
+                          ชื่อ-นามสกุล{" "}
+                          {isEditing && <span className="text-red-500">*</span>}
                         </label>
                         <input
                           type="text"
@@ -435,7 +501,8 @@ const Profile = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          อีเมล {isEditing && <span className="text-red-500">*</span>}
+                          อีเมล{" "}
+                          {isEditing && <span className="text-red-500">*</span>}
                         </label>
                         <input
                           type="email"
@@ -452,7 +519,8 @@ const Profile = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          เบอร์โทรศัพท์ {isEditing && <span className="text-red-500">*</span>}
+                          เบอร์โทรศัพท์{" "}
+                          {isEditing && <span className="text-red-500">*</span>}
                         </label>
                         <input
                           type="text"
@@ -469,7 +537,8 @@ const Profile = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          ID Line {isEditing && <span className="text-red-500">*</span>}
+                          ID Line{" "}
+                          {isEditing && <span className="text-red-500">*</span>}
                         </label>
                         <input
                           type="text"
@@ -484,7 +553,7 @@ const Profile = () => {
                           disabled={!isEditing}
                         />
                       </div>
-                      <div>
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           อายุ {isEditing && <span className="text-red-500">*</span>}
                         </label>
@@ -500,11 +569,14 @@ const Profile = () => {
                           required
                           disabled={!isEditing}
                         />
-                      </div>
-                      {(role === "tenant") && (
+                      </div> */}
+                      {role === "tenant" && (
                         <div className="md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            User ID Line {isEditing && <span className="text-red-500">*</span>}
+                            User ID Line{" "}
+                            {isEditing && (
+                              <span className="text-red-500">*</span>
+                            )}
                           </label>
                           <input
                             type="text"
@@ -525,10 +597,15 @@ const Profile = () => {
                       <div className="pt-4">
                         <button
                           type="submit"
-                          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300 flex items-center justify-center"
+                          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300 flex items-center justify-center
+                 disabled:opacity-50 disabled:cursor-not-allowed"
                           disabled={
-                            (role === "tenant") &&
-                            !idLine.trim()
+                            // tenant ต้องมี Line ID
+                            (role === "tenant" && !idLine.trim()) ||
+                            // username ยังไม่ผ่าน
+                            usernameStatus === "invalid" ||
+                            // username กำลังตรวจสอบ
+                            usernameStatus === "checking"
                           }
                         >
                           <i className="fas fa-save mr-2"></i> บันทึกข้อมูล
@@ -582,7 +659,11 @@ const Profile = () => {
                     <button
                       type="submit"
                       className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300 flex items-center justify-center"
-                      disabled={password && password.length < 6}
+                      disabled={
+                        !password ||
+                        password.length < 6 ||
+                        password.includes(" ")
+                      }
                     >
                       <i className="fas fa-lock mr-2"></i> อัปเดตรหัสผ่าน
                     </button>

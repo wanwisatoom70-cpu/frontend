@@ -39,7 +39,7 @@ const Sidebar = () => {
     "/owner/rooms": "bg-orange-50 text-orange-600 border-l-4 border-orange-600",
     "/owner/staff": "bg-purple-50 text-purple-600 border-l-4 border-purple-600",
     "/owner/tenant": "bg-teal-50 text-teal-600 border-l-4 border-teal-600",
-    "/owner/bookings": "bg-red-50 text-red-600 border-l-4 border-red-600",
+    // "/owner/bookings": "bg-red-50 text-red-600 border-l-4 border-red-600",
     "/owner/room-prices":
       "bg-indigo-50 text-indigo-600 border-l-4 border-indigo-600",
     "/owner/packages": "bg-lime-50 text-lime-600 border-l-4 border-lime-600",
@@ -52,7 +52,7 @@ const Sidebar = () => {
     "/staff": "bg-red-50 text-red-600 border-l-4 border-red-600",
     "/staff/rooms": "bg-orange-50 text-orange-600 border-l-4 border-orange-600",
     "/staff/tenant": "bg-teal-50 text-teal-600 border-l-4 border-teal-600",
-    "/staff/bookings": "bg-red-50 text-red-600 border-l-4 border-red-600",
+    // "/staff/bookings": "bg-red-50 text-red-600 border-l-4 border-red-600",
     "/staff/room-prices":
       "bg-indigo-50 text-indigo-600 border-l-4 border-indigo-600",
     "/staff/packages": "bg-lime-50 text-lime-600 border-l-4 border-lime-600",
@@ -96,7 +96,7 @@ const Sidebar = () => {
     "/owner/rooms": "text-orange-600",
     "/owner/staff": "text-purple-600",
     "/owner/tenant": "text-teal-600",
-    "/owner/bookings": "text-red-600",
+    // "/owner/bookings": "text-red-600",
     "/owner/room-prices": "text-indigo-600",
     "/owner/packages": "text-lime-600",
     "/owner/maintenance": "text-green-600",
@@ -106,7 +106,7 @@ const Sidebar = () => {
     "/staff": "text-red-600",
     "/staff/rooms": "text-orange-600",
     "/staff/tenant": "text-teal-600",
-    "/staff/bookings": "text-red-600",
+    // "/staff/bookings": "text-red-600",
     "/staff/room-prices": "text-indigo-600",
     "/staff/packages": "text-lime-600",
     "/staff/maintenance": "text-green-600",
@@ -190,17 +190,17 @@ const Sidebar = () => {
         icon: "fas fa-user-friends",
       },
       {
-        to: "/owner/bookings",
-        label: "รายการเช่า",
-        icon: "fas fa-calendar-check",
-      },
-      {
         to: "/owner/room-prices",
         label: "จัดการค่าเช่า",
         icon: "fas fa-dollar-sign",
       },
-      { to: "/owner/packages", label: "รายการพัสดุ", icon: "fas fa-box-open" },
-      { to: "/owner/maintenance", label: "รายการซ่อม", icon: "fas fa-tools" },
+      // {
+      //   to: "/owner/bookings",
+      //   label: "รายการเช่า",
+      //   icon: "fas fa-calendar-check",
+      // },
+      // { to: "/owner/packages", label: "รายการพัสดุ", icon: "fas fa-box-open" },
+      // { to: "/owner/maintenance", label: "รายการซ่อม", icon: "fas fa-tools" },
       { to: "/owner/reviews", label: "รีวิว", icon: "fas fa-star" },
     ],
     staff: [
@@ -211,11 +211,11 @@ const Sidebar = () => {
         label: "จัดการผู้เช่า",
         icon: "fas fa-user-friends",
       },
-      {
-        to: "/staff/bookings",
-        label: "รายการเช่า",
-        icon: "fas fa-calendar-check",
-      },
+      // {
+      //   to: "/staff/bookings",
+      //   label: "รายการเช่า",
+      //   icon: "fas fa-calendar-check",
+      // },
       {
         to: "/owner/room-prices",
         label: "จัดการค่าเช่า",
@@ -248,7 +248,7 @@ const Sidebar = () => {
     ],
     visitor: [
       { to: "/login", label: "เข้าสู่ระบบ", icon: "fas fa-sign-in-alt mr-1" },
-      { to: "/register", label: "สมัครสมาชิก", icon: "fas fa-user-plus mr-1" },
+      // { to: "/register", label: "สมัครสมาชิก", icon: "fas fa-user-plus mr-1" },
     ],
   };
 

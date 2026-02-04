@@ -341,7 +341,7 @@ const OwnerStaff = () => {
             </div>
 
             {/* Checkbox */}
-            <div className="flex items-center mt-2 sm:mt-0">
+            {/* <div className="flex items-center mt-2 sm:mt-0">
               <input
                 type="checkbox"
                 id="showGuest"
@@ -352,7 +352,7 @@ const OwnerStaff = () => {
               <label htmlFor="showGuest" className="ml-2 text-sm text-gray-700">
                 ผู้ใช้ทั่วไป
               </label>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

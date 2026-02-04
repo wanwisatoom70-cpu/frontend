@@ -102,6 +102,14 @@ const ManageProperties = () => {
         showToast("กรุณากรอกที่อยู่", "error");
         return;
       }
+      if (!editData?.description || editData.description.trim() === "") {
+        showToast("กรุณากรอกคำอธิบาย", "error");
+        return;
+      }
+      if (!editData?.owner_ids || editData.owner_ids.length === 0) {
+        showToast("กรุณาเลือกเจ้าของอสังหาริมทรัพย์", "error");
+        return;
+      }
 
       const formData = new FormData();
       formData.append("name", editData.name);
@@ -250,7 +258,7 @@ const ManageProperties = () => {
     return (
       <div className="relative owner-multiselect">
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          เจ้าของ
+          เจ้าของ <span className="text-red-500">*</span>
         </label>
         <div
           className="min-h-[42px] border border-gray-300 rounded-lg p-2 cursor-pointer bg-white"
@@ -624,7 +632,7 @@ const ManageProperties = () => {
                 {/* Image Section */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    รูปภาพ
+                    รูปภาพ <span className="text-red-500">*</span>
                   </label>
 
                   {/* Tabs */}
@@ -750,7 +758,7 @@ const ManageProperties = () => {
                 {/* Description Field */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    รายละเอียด
+                    รายละเอียด <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={editData?.description || ""}
