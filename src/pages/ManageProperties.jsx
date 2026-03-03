@@ -489,7 +489,7 @@ const ManageProperties = () => {
                   <img
                     src={
                       p.image && p.image.startsWith("/uploads")
-                        ? `http://localhost:5000${p.image}`
+                        ? `${import.meta.env.VITE_API_IMG}${p.image}`
                         : "/default-dorm.jpg"
                     }
                     alt={p.name}
