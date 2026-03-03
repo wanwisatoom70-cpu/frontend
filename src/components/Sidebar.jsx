@@ -350,7 +350,7 @@ const Sidebar = () => {
                   ) {
                     srcImage = userProfileImage;
                   } else if (userProfileImage.startsWith("/uploads")) {
-                    srcImage = `http://localhost:5000${userProfileImage}`;
+                    srcImage = `${import.meta.env.VITE_API_URL}${userProfileImage}`;
                   } else {
                     srcImage = "/default-avatar.png";
                   }
