@@ -405,7 +405,7 @@ const OwnerStaff = () => {
                   <div className="flex items-center">
                     {s.profile_image ? (
                       <img
-                        src={`http://localhost:5000${s.profile_image}`}
+                        src={`${import.meta.env.VITE_API_URL}${s.profile_image}`}
                         alt={s.fullname}
                         className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                       />

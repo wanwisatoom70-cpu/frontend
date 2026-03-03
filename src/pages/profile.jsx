@@ -285,7 +285,7 @@ const Profile = () => {
                           }
                           // กรณีเป็น path จากฐานข้อมูล
                           if (profileImage.startsWith("/uploads")) {
-                            return `http://localhost:5000${profileImage}`; // เปลี่ยนเป็น host ของ backend จริง
+                            return `${import.meta.env.VITE_API_URL}${profileImage}`; // เปลี่ยนเป็น host ของ backend จริง
                           }
                           // fallback
                           return "/default-avatar.png";

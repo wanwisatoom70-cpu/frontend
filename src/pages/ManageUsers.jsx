@@ -711,7 +711,7 @@ const ManageUsers = () => {
                       {u.profile_image &&
                       u.profile_image.startsWith("/uploads") ? (
                         <img
-                          src={`http://localhost:5000${u.profile_image}`}
+                          src={`${import.meta.env.VITE_API_URL}${u.profile_image}`}
                           alt={u.fullname}
                           className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                           onError={(e) => {

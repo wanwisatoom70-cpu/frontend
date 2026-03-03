@@ -510,7 +510,7 @@ const OwnerTenant = () => {
                   <div className="flex items-center">
                     {t.profile_image ? (
                       <img
-                        src={`http://localhost:5000${t.profile_image}`}
+                        src={`${import.meta.env.VITE_API_URL}${t.profile_image}`}
                         alt={t.fullname}
                         className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md"
                       />

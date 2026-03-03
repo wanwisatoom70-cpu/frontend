@@ -696,7 +696,7 @@ const ManageProperties = () => {
                             editData.imagePreview
                               ? editData.imagePreview // กรณีอัปโหลดใหม่
                               : editData.image?.startsWith("/uploads")
-                                ? `http://localhost:5000${editData.image}` // รูปเดิมจาก backend
+                                ? `${import.meta.env.VITE_API_URL}${editData.image}` // รูปเดิมจาก backend
                                 : "/default-dorm.jpg"
                           }
                           alt="Preview"
@@ -774,7 +774,7 @@ const ManageProperties = () => {
                         ? typeof detailData.image === "string"
                           ? detailData.image.startsWith("http")
                             ? detailData.image
-                            : `http://localhost:5000${detailData.image}`
+                            : `${import.meta.env.VITE_API_URL}${detailData.image}`
                           : URL.createObjectURL(detailData.image)
                         : "/default-dorm.jpg"
                     }

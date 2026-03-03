@@ -399,7 +399,7 @@ const OwnerProperties = () => {
                       p.image
                         ? p.image.startsWith("http")
                           ? p.image
-                          : `http://localhost:5000${p.image}`
+                          : `${import.meta.env.VITE_API_URL}${p.image}`
                         : "/default-dorm.jpg"
                     }
                     alt={p.name}
@@ -732,7 +732,7 @@ const OwnerProperties = () => {
                       selectedProperty.image
                         ? selectedProperty.image.startsWith("http")
                           ? selectedProperty.image
-                          : `http://localhost:5000${selectedProperty.image}`
+                          : `${import.meta.env.VITE_API_URL}${selectedProperty.image}`
                         : "/default-dorm.jpg"
                     }
                     alt={selectedProperty.name}
