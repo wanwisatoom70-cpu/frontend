@@ -15,6 +15,7 @@ const ManageProperties = () => {
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailData, setDetailData] = useState(null);
+  const [isDuplicate, setIsDuplicate] = useState(false);
   const [editData, setEditData] = useState({
     id: null,
     name: "",
@@ -22,7 +23,7 @@ const ManageProperties = () => {
     description: "",
     image: "",
     imageFile: null,
-    imageTab: "url",
+    imagePreview: "",
     owner_ids: [],
   });
 
@@ -35,7 +36,7 @@ const ManageProperties = () => {
         description: "",
         image: "",
         imageFile: null,
-        imageTab: "url",
+        imagePreview: "",
         owner_ids: [],
       });
       setModalOpen(true);
@@ -77,7 +78,7 @@ const ManageProperties = () => {
         description: prev?.description ?? "",
         image: prev?.image ?? "",
         imageFile: prev?.imageFile ?? null,
-        imageTab: prev?.imageTab ?? "url",
+        imagePreview: prev?.imagePreview ?? "",
         owner_ids: prev?.owner_ids ?? [],
       }));
     }
@@ -92,10 +93,27 @@ const ManageProperties = () => {
     }, 3000);
   };
 
+  const checkName = async (name) => {
+    try {
+      const res = await API.get("/properties/check-name", {
+        params: { name, id: editData?.id || null },
+      });
+
+      setIsDuplicate(res.data.exists);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleSave = async () => {
     try {
+      
       if (!editData?.name || editData.name.trim() === "") {
         showToast("กรุณากรอกชื่ออสังหาริมทรัพย์", "error");
+        return;
+      }
+      if (isDuplicate) {
+        showToast("ชื่ออสังหาริมทรัพย์นี้ถูกใช้ไปแล้ว", "error");
         return;
       }
       if (!editData?.address || editData.address.trim() === "") {
@@ -110,6 +128,10 @@ const ManageProperties = () => {
         showToast("กรุณาเลือกเจ้าของอสังหาริมทรัพย์", "error");
         return;
       }
+      if (!editData?.imageFile || editData.imageFile.size === 0) {
+        showToast("กรุณาเลือกภาพอสังหาริมทรัพย์", "error");
+        return;
+      }
 
       const formData = new FormData();
       formData.append("name", editData.name);
@@ -117,14 +139,8 @@ const ManageProperties = () => {
       formData.append("description", editData.description || "");
       formData.append("owner_ids", JSON.stringify(editData.owner_ids || []));
 
-      // ถ้าเลือก tab URL
-      if (editData.imageTab === "url" && editData.image) {
-        formData.append("image", editData.image);
-      }
-
-      // ถ้าเลือก tab Upload
-      if (editData.imageTab === "upload" && editData.imageFile) {
-        formData.append("imageFile", editData.imageFile); // ต้องเก็บ file จริง
+      if (editData.imageFile) {
+        formData.append("imageFile", editData.imageFile);
       }
 
       if (editData?.id) {
@@ -146,7 +162,7 @@ const ManageProperties = () => {
         description: "",
         image: "",
         imageFile: null,
-        imageTab: "url",
+        imagePreview: "",
         owner_ids: [],
       });
 
@@ -155,7 +171,7 @@ const ManageProperties = () => {
       console.error(err);
       showToast(
         err.response?.data?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
-        "error"
+        "error",
       );
     }
   };
@@ -167,8 +183,19 @@ const ManageProperties = () => {
       setDeleteConfirm(null);
       fetchProperties();
     } catch (err) {
-      console.error(err);
-      showToast("เกิดข้อผิดพลาดในการลบข้อมูล", "error");
+      if (err.response?.data?.reasons) {
+        const r = err.response.data.reasons;
+        let msg = "ไม่สามารถลบได้ เนื่องจากยังมี:\n";
+
+        if (r.owners) msg += `- เจ้าของหอ ${r.owners} คน\n`;
+        if (r.staff) msg += `- พนักงาน ${r.staff} คน\n`;
+        if (r.rooms) msg += `- ห้อง ${r.rooms} ห้อง\n`;
+        if (r.bookings) msg += `- การเช่า/จอง ${r.bookings} รายการ\n`;
+
+        showToast(msg, "error");
+      } else {
+        showToast("เกิดข้อผิดพลาดในการลบข้อมูล", "error");
+      }
     }
   };
 
@@ -219,7 +246,7 @@ const ManageProperties = () => {
   });
 
   const uniqueProperty = Array.from(
-    new Map(filteredProperties.map((s) => [s.id, s])).values()
+    new Map(filteredProperties.map((s) => [s.id, s])).values(),
   );
 
   const OwnerMultiSelect = ({ owners, selectedOwners, onChange }) => {
@@ -227,7 +254,7 @@ const ManageProperties = () => {
     const [isOpen, setIsOpen] = useState(false);
 
     const filteredOwners = owners.filter((owner) =>
-      owner.username.toLowerCase().includes(searchTerm.toLowerCase())
+      owner.username.toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
     const toggleOwner = (ownerId) => {
@@ -460,30 +487,11 @@ const ManageProperties = () => {
                 {/* Property Image */}
                 <div className="h-48 overflow-hidden">
                   <img
-                    src={(() => {
-                      if (!p.image) return "/default-dorm.jpg";
-
-                      // กรณีเป็น string
-                      if (typeof p.image === "string") {
-                        if (
-                          p.image.startsWith("http") ||
-                          p.image.startsWith("https")
-                        ) {
-                          return p.image; // URL ภายนอก
-                        }
-                        if (p.image.startsWith("/uploads")) {
-                          return `http://localhost:5000${p.image}`; // Path จาก backend
-                        }
-                        return p.image; // fallback สำหรับ string อื่น ๆ
-                      }
-
-                      // กรณีเป็น File object
-                      if (p.image instanceof File) {
-                        return URL.createObjectURL(p.image);
-                      }
-
-                      return "/default-dorm.jpg"; // default fallback
-                    })()}
+                    src={
+                      p.image && p.image.startsWith("/uploads")
+                        ? `http://localhost:5000${p.image}`
+                        : "/default-dorm.jpg"
+                    }
                     alt={p.name}
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                     onError={(e) => {
@@ -598,11 +606,21 @@ const ManageProperties = () => {
                     type="text"
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     value={editData?.name || ""}
-                    onChange={(e) =>
-                      setEditData({ ...editData, name: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setEditData({ ...editData, name: value });
+
+                      if (value.trim() !== "") {
+                        checkName(value);
+                      }
+                    }}
                     required
                   />
+                  {isDuplicate && (
+                    <p className="text-red-500 text-sm mt-1">
+                      ชื่ออสังหาริมทรัพย์นี้ถูกใช้ไปแล้ว
+                    </p>
+                  )}
                 </div>
 
                 <OwnerMultiSelect
@@ -635,114 +653,52 @@ const ManageProperties = () => {
                     รูปภาพ <span className="text-red-500">*</span>
                   </label>
 
-                  {/* Tabs */}
-                  <div className="flex mb-4">
-                    <button
-                      type="button"
-                      className={`px-4 py-2 rounded-l-lg border border-gray-300 transition-colors duration-200 ${
-                        editData?.imageTab === "url"
-                          ? "bg-indigo-500 text-white"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
-                      onClick={() =>
-                        setEditData({ ...editData, imageTab: "url" })
-                      }
-                    >
-                      URL
-                    </button>
-                    <button
-                      type="button"
-                      className={`px-4 py-2 rounded-r-lg border border-gray-300 border-l-0 transition-colors duration-200 ${
-                        editData?.imageTab === "upload"
-                          ? "bg-indigo-500 text-white"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
-                      onClick={() =>
-                        setEditData({ ...editData, imageTab: "upload" })
-                      }
-                    >
-                      อัปโหลด
-                    </button>
-                  </div>
-
-                  {/* Image Input Area */}
                   <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                    {editData?.imageTab === "url" ? (
-                      <input
-                        type="text"
-                        value={editData?.image ?? ""}
-                        onChange={(e) =>
-                          setEditData({ ...editData, image: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="https://example.com/image.jpg"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 rounded-lg bg-white">
-                        <div className="text-center">
-                          <i className="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                          <p className="text-gray-500">
-                            คลิกเพื่ออัปโหลดรูปภาพ
-                          </p>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files[0];
-                              if (file) {
-                                setEditData({
-                                  ...editData,
-                                  imageFile: file,
-                                });
-                                const previewURL = URL.createObjectURL(file);
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  image: previewURL,
-                                }));
-                              }
-                            }}
-                            className="hidden"
-                            id="imageUploadInput"
-                          />
-                          <label
-                            htmlFor="imageUploadInput"
-                            className="cursor-pointer block mt-2"
-                          >
-                            <span className="inline-flex items-center px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 transition-colors duration-200">
-                              <i className="fas fa-upload mr-2"></i>
-                              เลือกรูปภาพ
-                            </span>
-                          </label>
-                        </div>
+                    <div className="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 rounded-lg bg-white">
+                      <div className="text-center">
+                        <i className="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                        <p className="text-gray-500">คลิกเพื่ออัปโหลดรูปภาพ</p>
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              setEditData((prev) => ({
+                                ...prev,
+                                imageFile: file, // เก็บไฟล์ไว้ส่ง backend
+                                imagePreview: URL.createObjectURL(file), // ใช้ preview
+                              }));
+                            }
+                          }}
+                          className="hidden"
+                          id="imageUploadInput"
+                        />
+
+                        <label
+                          htmlFor="imageUploadInput"
+                          className="cursor-pointer block mt-2"
+                        >
+                          <span className="inline-flex items-center px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 transition-colors duration-200">
+                            <i className="fas fa-upload mr-2"></i>
+                            เลือกรูปภาพ
+                          </span>
+                        </label>
                       </div>
-                    )}
+                    </div>
 
                     {/* Image Preview */}
-                    {editData?.image && (
+                    {(editData?.imagePreview || editData?.image) && (
                       <div className="mt-4">
                         <img
-                          src={(() => {
-                            if (!editData.image) return "/default-dorm.jpg";
-
-                            if (typeof editData.image === "string") {
-                              if (
-                                editData.image.startsWith("http") ||
-                                editData.image.startsWith("https")
-                              ) {
-                                return editData.image; // URL ภายนอก
-                              }
-                              if (editData.image.startsWith("/uploads")) {
-                                return `http://localhost:5000${editData.image}`; // path backend
-                              }
-                              return editData.image; // fallback สำหรับ string อื่น ๆ
-                            }
-
-                            if (editData.image instanceof File) {
-                              return URL.createObjectURL(editData.image);
-                            }
-
-                            return "/default-dorm.jpg"; // default fallback
-                          })()}
+                          src={
+                            editData.imagePreview
+                              ? editData.imagePreview // กรณีอัปโหลดใหม่
+                              : editData.image?.startsWith("/uploads")
+                                ? `http://localhost:5000${editData.image}` // รูปเดิมจาก backend
+                                : "/default-dorm.jpg"
+                          }
                           alt="Preview"
                           className="w-full h-48 object-cover rounded-lg shadow-md"
                           onError={(e) => {

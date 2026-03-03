@@ -60,11 +60,11 @@ const ManageUsers = () => {
           // ดึง rooms ทั้งหมดจากทุก property
           const allBookings = user.bookings.flatMap((p) => p.rooms);
           const sorted = [...allBookings].sort(
-            (a, b) => new Date(b.start_date) - new Date(a.start_date)
+            (a, b) => new Date(b.start_date) - new Date(a.start_date),
           );
           const currentBooking =
             sorted.find(
-              (bk) => bk.status === "confirmed" || bk.status === "pending"
+              (bk) => bk.status === "confirmed" || bk.status === "pending",
             ) || sorted[0];
           return { ...user, current_booking: currentBooking };
         }
@@ -159,7 +159,7 @@ const ManageUsers = () => {
         console.error(err);
       }
     },
-    [] // ไม่ต้องมี dependencies เพราะใช้ editDataRef
+    [], // ไม่ต้องมี dependencies เพราะใช้ editDataRef
   );
   const validateForm = () => {
     // ตรวจสอบ username
@@ -212,6 +212,40 @@ const ManageUsers = () => {
       checkUsername(editData?.username);
     }
   }, [modalOpen, editData?.username, checkUsername]);
+
+  // ฟังก์ชันตรวจสอบความถูกต้องของฟอร์มก่อนบันทึก
+  const isFormValid = () => {
+    if (!editData) return false;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    const isUsernameValid = usernameValidation.isValid === true;
+    const isFullnameValid =
+      editData.fullname && editData.fullname.trim() !== "";
+    const isEmailValid = editData.email && emailRegex.test(editData.email);
+    const isRoleValid = !!editData.role;
+
+    // 🔹 กรณีเพิ่มผู้ใช้ใหม่ → ต้องมีรหัสผ่านและ >= 6
+    if (!editData.id) {
+      const isPasswordValid =
+        editData.password && editData.password.length >= 6;
+
+      return (
+        isUsernameValid &&
+        isFullnameValid &&
+        isEmailValid &&
+        isRoleValid &&
+        isPasswordValid
+      );
+    }
+
+    // 🔹 กรณีแก้ไข → ถ้ามีการกรอกรหัสผ่าน ต้อง >= 6
+    if (editData.password && editData.password.length > 0) {
+      if (editData.password.length < 6) return false;
+    }
+
+    return isUsernameValid && isFullnameValid && isEmailValid && isRoleValid;
+  };
 
   const handleSave = async () => {
     if (!validateForm()) return;
@@ -270,7 +304,7 @@ const ManageUsers = () => {
     } catch (err) {
       showToast(
         err.response?.data?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
-        "error"
+        "error",
       );
     }
   };
@@ -282,10 +316,10 @@ const ManageUsers = () => {
       setConfirmDelete(null);
       fetchUsers();
     } catch (err) {
-      console.error(err);
-      showToast("เกิดข้อผิดพลาดในการลบข้อมูล", "error");
+      showToast(err.response?.data?.message || "ไม่สามารถลบผู้ใช้ได้", "error");
     }
   };
+
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type });
     // ซ่อน toast หลังจาก 3 วินาที
@@ -382,7 +416,7 @@ const ManageUsers = () => {
     const containerRef = useRef(null);
     const menuRef = useRef(null);
     const filteredProperties = properties.filter((property) =>
-      property.name.toLowerCase().includes(searchTerm.toLowerCase())
+      property.name.toLowerCase().includes(searchTerm.toLowerCase()),
     );
     const toggleProperty = (propertyId) => {
       const newSelected = selectedProperties.includes(propertyId)
@@ -674,21 +708,23 @@ const ManageUsers = () => {
                   {/* User Header */}
                   <div className="p-5 bg-gradient-to-r from-indigo-50 to-purple-50">
                     <div className="flex items-center">
-                      {u.profile_image ? (
+                      {u.profile_image &&
+                      u.profile_image.startsWith("/uploads") ? (
                         <img
-                          src={
-                            u.profile_image.startsWith("http")
-                              ? u.profile_image
-                              : `http://localhost:5000${u.profile_image}`
-                          }
+                          src={`http://localhost:5000${u.profile_image}`}
                           alt={u.fullname}
                           className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "/default-avatar.png";
+                          }}
                         />
                       ) : (
                         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center shadow-md">
                           <i className="fas fa-user text-2xl text-indigo-500"></i>
                         </div>
                       )}
+
                       <div className="ml-4">
                         <h3 className="text-xl font-bold font-kanit text-gray-800">
                           {u.fullname}
@@ -793,13 +829,6 @@ const ManageUsers = () => {
                           </div>
                         )}
                     </div>
-                    <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                      <div className="text-xs text-gray-500">ID: {u.id}</div>
-                      <div className="text-xs text-gray-500">
-                        สร้างเมื่อ:{" "}
-                        {new Date(u.created_at).toLocaleDateString("th-TH")}
-                      </div>
-                    </div>
                   </div>
                 </div>
               );
@@ -838,15 +867,15 @@ const ManageUsers = () => {
                           usernameValidation.isValid === false
                             ? "border-red-500 focus:ring-red-500 focus:border-red-500"
                             : usernameValidation.isValid === true
-                            ? "border-green-500 focus:ring-green-500 focus:border-green-500"
-                            : "border-gray-300"
+                              ? "border-green-500 focus:ring-green-500 focus:border-green-500"
+                              : "border-gray-300"
                         }`}
                         value={editData?.username || ""}
                         onChange={(e) => {
                           // อนุญาตเฉพาะภาษาอังกฤษและตัวเลขเท่านั้น
                           const value = e.target.value.replace(
                             /[^a-zA-Z0-9]/g,
-                            ""
+                            "",
                           );
                           setEditData({ ...editData, username: value });
                         }}
@@ -864,8 +893,8 @@ const ManageUsers = () => {
                           usernameValidation.isValid === false
                             ? "text-red-600"
                             : usernameValidation.isValid === true
-                            ? "text-green-600"
-                            : "text-gray-500"
+                              ? "text-green-600"
+                              : "text-gray-500"
                         }`}
                       >
                         {usernameValidation.message}
@@ -914,7 +943,8 @@ const ManageUsers = () => {
                     <div className="relative">
                       <input
                         type={showPassword ? "text" : "password"}
-                        placeholder="รหัสผ่าน"
+                        minLength={6}
+                        placeholder="รหัสผ่านอย่างน้อย 6 ตัว"
                         className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         value={editData?.password || ""}
                         onChange={(e) =>
@@ -954,7 +984,6 @@ const ManageUsers = () => {
                       <option value="admin">ผู้ดูแลระบบ</option>
                       <option value="owner">เจ้าของ</option>
                       <option value="staff">พนักงาน</option>
-                      <option value="guest">ผู้ใช้</option>
                     </select>
                   </div>
                   {/* แสดงเฉพาะเมื่อ role เป็น owner หรือ staff */}
@@ -981,9 +1010,9 @@ const ManageUsers = () => {
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={!usernameValidation.isValid}
+                  disabled={!isFormValid()}
                   className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
-                    usernameValidation.isValid
+                    isFormValid()
                       ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:shadow-md"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
                   }`}

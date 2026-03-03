@@ -201,7 +201,7 @@ const Booking = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredBookings.map((booking) => (
+            {filteredBookings.map((booking, index) => (
               <div
                 key={booking.booking_id}
                 className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl"
@@ -224,81 +224,10 @@ const Booking = () => {
                       {getStatusText(booking.booking_status)}
                     </span>
                   </div>
-
-                  {/* <div className="space-y-3 mb-6">
-                    <div className="flex items-center text-gray-700">
-                      <i className="fas fa-building w-5 text-blue-500 mr-2"></i>
-                      <span>
-                        หอ:{" "}
-                        {booking.property_name ||
-                          booking.property?.name ||
-                          "ไม่ระบุ"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center text-gray-700">
-                      <i className="fas fa-calendar-day w-5 text-indigo-500 mr-2"></i>
-                      <span>
-                        วันที่เช่า:{" "}
-                        {booking.booking_created_at
-                          ? new Date(
-                              booking.booking_created_at
-                            ).toLocaleDateString("th-TH")
-                          : "ไม่ระบุ"}
-                      </span>
-                    </div>
-                    <div className="flex items-center text-gray-700">
-                      <i className="fas fa-calendar-check w-5 text-green-500 mr-2"></i>
-                      <span>
-                        วันที่เริ่มต้น:{" "}
-                        {booking.start_date
-                          ? new Date(booking.start_date).toLocaleDateString(
-                              "th-TH"
-                            )
-                          : "ไม่ระบุ"}
-                      </span>
-                    </div>
-                    <div className="flex items-center text-gray-700">
-                      <i className="fas fa-calendar-times w-5 text-red-500 mr-2"></i>
-                      <span>
-                        วันที่สิ้นสุด:{" "}
-                        {booking.end_date
-                          ? new Date(booking.end_date).toLocaleDateString(
-                              "th-TH"
-                            )
-                          : "ไม่ระบุ"}
-                      </span>
-                    </div>
-                    <div className="flex items-center text-gray-700">
-                      <i className="fas fa-money-bill-wave w-5 text-yellow-500 mr-2"></i>
-                      <span>
-                        ราคา: ฿
-                        {(() => {
-                          const price =
-                            booking.billing_cycle === "monthly"
-                              ? booking.price_monthly
-                              : booking.price_term;
-
-                          return price != null
-                            ? Number(price).toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
-                            : "ไม่ระบุ";
-                        })()}
-                        /{getBillingCycleText(booking.billing_cycle)}
-                      </span>
-                    </div>
-                    <div className="flex items-center text-gray-700">
-                      <i className="fas fa-door-open w-5 text-purple-500 mr-2"></i>
-                      <span>รหัสห้อง: {booking.room_code}</span>
-                    </div>
-                  </div> */}
-
                   <div className="flex justify-between items-center">
                     <div className="text-xs text-gray-500">
                       {/* รหัสเช่า: #{booking.booking_id} */}
-                      รหัสห้อง: #{booking.room_code}
+                      ลำดับ: #{index + 1}
                     </div>
                     <button
                       className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
@@ -467,7 +396,7 @@ const Booking = () => {
                 {
                   icon: "fa-key",
                   bg: "bg-indigo-100",
-                  label: "รหัสห้อง",
+                  label: "Stayflow ID",
                   value: selectedBooking.room_code,
                 },
                 {

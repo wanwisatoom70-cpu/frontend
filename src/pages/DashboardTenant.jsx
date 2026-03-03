@@ -35,22 +35,6 @@ const DashboardTenant = () => {
           textColor: "text-emerald-800",
           borderColor: "border-emerald-200",
         };
-      case "pending":
-        return {
-          text: "รอการยืนยัน",
-          icon: "fas fa-hourglass-half text-amber-500",
-          bgColor: "bg-amber-100",
-          textColor: "text-amber-800",
-          borderColor: "border-amber-200",
-        };
-      case "cancelled":
-        return {
-          text: "ยกเลิกแล้ว",
-          icon: "fas fa-times-circle text-rose-500",
-          bgColor: "bg-red-100",
-          textColor: "text-red-800",
-          borderColor: "border-red-200",
-        };
       default:
         return {
           text: status,

@@ -23,7 +23,6 @@ const OwnerStaff = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
-  const [showGuest, setShowGuest] = useState(false);
   // State สำหรับการตรวจสอบ username และ email
   const [usernameValidation, setUsernameValidation] = useState({
     isValid: null,
@@ -44,14 +43,14 @@ const OwnerStaff = () => {
   const fetchStaff = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await API.get(`/staff?showGuest=${showGuest}`);
+      const res = await API.get(`/staff`);
       setStaffs(res.data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [showGuest]);
+  }, []);
 
   useEffect(() => {
     fetchStaff();
@@ -116,7 +115,7 @@ const OwnerStaff = () => {
         console.error(err);
       }
     },
-    [editingId]
+    [editingId],
   );
 
   // ✅ useEffect สำหรับ username
@@ -243,7 +242,7 @@ const OwnerStaff = () => {
         showToast(err.response?.data?.message || "เกิดข้อผิดพลาด", "error");
       }
     },
-    [validateForm, editingId, form, closeModal, fetchStaff, showToast]
+    [validateForm, editingId, form, closeModal, fetchStaff, showToast],
   );
 
   // ใช้ useCallback กับ handleDelete
@@ -257,11 +256,11 @@ const OwnerStaff = () => {
       } catch (err) {
         showToast(
           err.response?.data?.message || "เกิดข้อผิดพลาดในการลบข้อมูล",
-          "error"
+          "error",
         );
       }
     },
-    [fetchStaff, showToast]
+    [fetchStaff, showToast],
   );
 
   const filteredStaffs = staffs.filter((staff) => {
@@ -272,15 +271,12 @@ const OwnerStaff = () => {
 
     if (!matchesSearch) return false;
 
-    // ถ้า showGuest ติ๊ก → แสดงเฉพาะ guest
-    if (showGuest) return staff.role === "guest";
-
-    // ถ้าไม่ติ๊ก → แสดงเฉพาะ staff
-    return staff.role !== "guest";
+    // แสดงเฉพาะ staff เท่านั้น
+    return staff.role === "staff";
   });
 
   const uniqueStaffs = Array.from(
-    new Map(filteredStaffs.map((s) => [s.id, s])).values()
+    new Map(filteredStaffs.map((s) => [s.id, s])).values(),
   );
 
   return (
@@ -339,20 +335,6 @@ const OwnerStaff = () => {
                 <i className="fas fa-search"></i>
               </div>
             </div>
-
-            {/* Checkbox */}
-            {/* <div className="flex items-center mt-2 sm:mt-0">
-              <input
-                type="checkbox"
-                id="showGuest"
-                checked={showGuest}
-                onChange={(e) => setShowGuest(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 rounded"
-              />
-              <label htmlFor="showGuest" className="ml-2 text-sm text-gray-700">
-                ผู้ใช้ทั่วไป
-              </label>
-            </div> */}
           </div>
         </div>
       </div>
@@ -423,7 +405,7 @@ const OwnerStaff = () => {
                   <div className="flex items-center">
                     {s.profile_image ? (
                       <img
-                        src={s.profile_image}
+                        src={`http://localhost:5000${s.profile_image}`}
                         alt={s.fullname}
                         className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                       />
@@ -499,7 +481,7 @@ const OwnerStaff = () => {
                   </div>
 
                   <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                    <div className="text-xs text-gray-500">ID: {s.id}</div>
+                    {/* <div className="text-xs text-gray-500">ID: {s.id}</div> */}
                     <div className="flex space-x-2">
                       <button
                         onClick={() => openModal(s)}
@@ -558,15 +540,15 @@ const OwnerStaff = () => {
                         usernameValidation.isValid === false
                           ? "border-red-500 focus:ring-red-500 focus:border-red-500"
                           : usernameValidation.isValid === true
-                          ? "border-green-500 focus:ring-green-500 focus:border-green-500"
-                          : "border-gray-300"
+                            ? "border-green-500 focus:ring-green-500 focus:border-green-500"
+                            : "border-gray-300"
                       }`}
                       value={form.username}
                       onChange={(e) => {
                         if (editingId && form.role === "guest") return; // ถ้า guest ห้ามแก้
                         const value = e.target.value.replace(
                           /[^a-zA-Z0-9]/g,
-                          ""
+                          "",
                         );
                         setForm({ ...form, username: value });
                       }}
@@ -585,8 +567,8 @@ const OwnerStaff = () => {
                         usernameValidation.isValid === false
                           ? "text-red-600"
                           : usernameValidation.isValid === true
-                          ? "text-green-600"
-                          : "text-gray-500"
+                            ? "text-green-600"
+                            : "text-gray-500"
                       }`}
                     >
                       {usernameValidation.message}

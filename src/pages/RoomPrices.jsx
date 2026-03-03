@@ -114,10 +114,10 @@ const RoomPrices = () => {
   const filteredRooms = rooms.filter((room) => {
     if (!search.trim()) return true;
     const keyword = search.toLowerCase();
+
     return (
-      room.property_name.toLowerCase().includes(keyword) ||
-      room.name.toLowerCase().includes(keyword) ||
-      room.code.toLowerCase().includes(keyword)
+      room.property_name?.toLowerCase().includes(keyword) ||
+      room.name?.toLowerCase().includes(keyword)
     );
   });
 
@@ -213,7 +213,7 @@ const RoomPrices = () => {
                     .filter(
                       (room, index, self) =>
                         index ===
-                        self.findIndex((r) => r.room_id === room.room_id)
+                        self.findIndex((r) => r.room_id === room.room_id),
                     )
                     .map((room, idx) => (
                       <tr
@@ -306,19 +306,6 @@ const RoomPrices = () => {
                   <input
                     type="text"
                     value={selectedRoom.name || ""}
-                    readOnly
-                    className="w-full p-2 border rounded"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-1 flex items-center">
-                    <i className="fas fa-key mr-2 text-primary"></i>
-                    รหัสห้อง
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedRoom.code || ""}
                     readOnly
                     className="w-full p-2 border rounded"
                   />
@@ -460,8 +447,8 @@ const RoomPrices = () => {
                   {isSubmitting
                     ? "กำลังบันทึก..."
                     : editMode
-                    ? "อัปเดตบิล"
-                    : "บันทึกบิล"}
+                      ? "อัปเดตบิล"
+                      : "บันทึกบิล"}
                 </button>
               </div>
             </form>
@@ -504,25 +491,8 @@ const RoomPrices = () => {
                             </div>
                             <div className="text-gray-600">
                               {new Date(bill.billing_date).toLocaleDateString(
-                                "th-TH"
+                                "th-TH",
                               )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-start space-x-3">
-                          <div className="bg-blue-100 p-2 rounded-lg">
-                            <i className="fas fa-calendar-alt text-blue-500"></i>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-700">
-                              วันที่แก้ไขบิล
-                            </div>
-                            <div className="text-gray-600">
-                              {bill.updated_at
-                                ? new Date(bill.updated_at).toLocaleDateString(
-                                    "th-TH"
-                                  )
-                                : "-"}
                             </div>
                           </div>
                         </div>
@@ -554,23 +524,7 @@ const RoomPrices = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-start space-x-3">
-                          <div className="bg-gray-100 p-2 rounded-lg">
-                            <i className="fas fa-sticky-note text-gray-500"></i>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-700">
-                              หมายเหตุ
-                            </div>
-                            <div className="text-gray-600">
-                              {bill.note || "-"}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Row 2 */}
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
                         <div className="flex items-start space-x-3">
                           <div className="bg-blue-100 p-2 rounded-lg">
                             <i className="fas fa-tint text-blue-500"></i>
@@ -598,7 +552,10 @@ const RoomPrices = () => {
                             </div>
                           </div>
                         </div>
+                      </div>
 
+                      {/* Row 2 */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
                         <div className="flex items-start space-x-3">
                           <div className="bg-green-100 p-2 rounded-lg">
                             <i className="fas fa-plus-circle text-green-500"></i>
@@ -623,20 +580,17 @@ const RoomPrices = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-start space-x-3">
-                          <div className="bg-blue-100 p-2 rounded-lg">
-                            <i className="fas fa-calendar-alt text-blue-500"></i>
+                        {/* หมายเหตุ (ขยายเต็มแถว) */}
+                        <div className="flex items-start space-x-3 col-span-2 md:col-span-3">
+                          <div className="bg-gray-100 p-2 rounded-lg">
+                            <i className="fas fa-sticky-note text-gray-500"></i>
                           </div>
-                          <div>
+                          <div className="w-full">
                             <div className="font-medium text-gray-700">
-                              วันที่ชำระ
+                              หมายเหตุ
                             </div>
-                            <div className="text-gray-600">
-                              {bill.paid_at
-                                ? new Date(bill.paid_at).toLocaleDateString(
-                                    "th-TH"
-                                  )
-                                : "-"}
+                            <div className="text-gray-600 break-words whitespace-pre-line">
+                              {bill.note || "-"}
                             </div>
                           </div>
                         </div>
@@ -647,12 +601,12 @@ const RoomPrices = () => {
                         <div className="flex items-center space-x-2">
                           <span
                             className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor(
-                              bill.status
+                              bill.status,
                             )}`}
                           >
                             {translateStatus(bill.status)}
                           </span>
-                          {bill.status === "pending" && (
+                          {bill.status === "unpaid" && (
                             <button
                               onClick={() => {
                                 setSelectedBill(bill); // สร้าง state ใหม่ selectedBill
@@ -670,9 +624,9 @@ const RoomPrices = () => {
                             className={`px-3 py-1 rounded-full text-sm font-semibold `}
                           >
                             ยืนยันการชำระแล้ว -{" "}
-                            {bill.created_at
-                              ? new Date(bill.created_at).toLocaleDateString(
-                                  "th-TH"
+                            {bill.paid_at
+                              ? new Date(bill.paid_at).toLocaleDateString(
+                                  "th-TH",
                                 )
                               : "-"}
                           </span>
@@ -701,14 +655,14 @@ const RoomPrices = () => {
                                       await API.post(`/bills/send/${bill.id}`);
                                       showToast(
                                         "✅ ส่งบิลและแจ้งเตือน LINE เรียบร้อยแล้ว",
-                                        "success"
+                                        "success",
                                       );
                                       openViewModal(selectedRoom); // รีเฟรชบิล
                                     } catch (err) {
                                       console.error(err);
                                       showToast(
                                         "❌ เกิดข้อผิดพลาดในการส่งบิล",
-                                        "error"
+                                        "error",
                                       );
                                     }
                                   },
@@ -738,7 +692,7 @@ const RoomPrices = () => {
                                       console.error(err);
                                       showToast(
                                         "❌ เกิดข้อผิดพลาดในการลบบิล",
-                                        "error"
+                                        "error",
                                       );
                                     }
                                   },

@@ -9,9 +9,7 @@ const PropertyCard = ({ property }) => {
         <img
           src={
             property.image
-              ? property.image.startsWith("http")
-                ? property.image
-                : `http://localhost:5000${property.image}`
+              ? `${import.meta.env.VITE_API_URL}${property.image}`
               : "/default-dorm.jpg"
           }
           alt={property.name}

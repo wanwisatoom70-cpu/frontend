@@ -263,16 +263,7 @@ const Rents = ({ role }) => {
                         className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center"
                       >
                         <i className="fas fa-info-circle mr-1"></i> ดูรายละเอียด
-                      </button>
-
-                      {rent.status === "unpaid" && (
-                        <button
-                          onClick={() => setConfirmRentId(rent.bill_id)}
-                          className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:shadow-md transition-all duration-300 flex items-center"
-                        >
-                          <i className="fas fa-check mr-1"></i> ชำระค่าเช่า
-                        </button>
-                      )}
+                      </button>                     
                     </div>
                   </div>
                 </div>

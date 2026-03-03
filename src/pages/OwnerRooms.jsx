@@ -9,7 +9,6 @@ const OwnerRooms = () => {
   const [form, setForm] = useState({
     property_id: "",
     name: "",
-    code: "",
     price_monthly: "",
     price_term: "",
     has_ac: 0,
@@ -26,16 +25,23 @@ const OwnerRooms = () => {
   const [filterProperty, setFilterProperty] = useState("all");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
+  const [existingImages, setExistingImages] = useState([]); // รูปเดิมจาก DB
   const [gallery, setGallery] = useState({
     open: false,
     images: [],
     currentIndex: 0,
     roomName: "",
   });
-  // แปลง image path ให้เป็น URL ที่ใช้ได้
   const getImageUrl = (img) => {
-    if (!img) return "/default-room.jpg"; // ถ้าไม่มีรูป
-    return img.startsWith("http") ? img : `http://localhost:5000${img}`;
+    if (!img) return "/default-room.jpg";
+
+    // แสดงเฉพาะไฟล์ที่อยู่ใน /uploads/
+    if (img.startsWith("/uploads/")) {
+      return `http://localhost:5000${img}`;
+    }
+
+    // ถ้าไม่ใช่ uploads ให้ใช้ default
+    return "/default-room.jpg";
   };
 
   // สำหรับ array ของ images
@@ -118,11 +124,61 @@ const OwnerRooms = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // ✅ ตรวจสอบข้อมูลที่จำเป็น
+    if (!form.property_id) {
+      return showToast("กรุณาเลือกอสังหาริมทรัพย์", "error");
+    }
+
+    if (!form.name.trim()) {
+      return showToast("กรุณากรอกชื่อห้อง", "error");
+    }
+
+    if (!form.price_monthly && !form.price_term) {
+      return showToast(
+        "กรุณากรอกราคาอย่างน้อย 1 แบบ (รายเดือน หรือ รายเทอม)",
+        "error",
+      );
+    }
+    // ต้องเลือกประเภทห้องอย่างน้อย 1
+    if (form.has_ac != 1 && form.has_fan != 1) {
+      return showToast("กรุณาเลือกประเภทห้องอย่างน้อย 1 อย่าง", "error");
+    }
+
+    // ต้องมีรายละเอียด
+    if (!form.description.trim()) {
+      return showToast("กรุณากรอกรายละเอียดห้อง", "error");
+    }
+
+    // ต้องกรอกราคาประกัน
+    if (!form.deposit) {
+      return showToast("กรุณากรอกราคาประกัน", "error");
+    }
+
+    // ต้องมีรูปอย่างน้อย 1 รูป (ทั้งรูปเดิม + รูปใหม่)
+    if (
+      existingImages.length === 0 &&
+      (!form.imageFiles || form.imageFiles.length === 0)
+    ) {
+      return showToast("กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป", "error");
+    }
+
+    if (form.price_monthly && Number(form.price_monthly) < 0) {
+      return showToast("ราคา/เดือน ต้องมากกว่าหรือเท่ากับ 0", "error");
+    }
+
+    if (form.price_term && Number(form.price_term) < 0) {
+      return showToast("ราคา/เทอม ต้องมากกว่าหรือเท่ากับ 0", "error");
+    }
+
+    if (form.deposit && Number(form.deposit) < 0) {
+      return showToast("ราคาประกัน ต้องมากกว่าหรือเท่ากับ 0", "error");
+    }
+
     try {
       const formData = new FormData();
       formData.append("property_id", form.property_id);
       formData.append("name", form.name);
-      formData.append("code", form.code);
       formData.append("price_monthly", form.price_monthly);
       formData.append("price_term", form.price_term);
       formData.append("has_ac", form.has_ac);
@@ -130,7 +186,7 @@ const OwnerRooms = () => {
       formData.append("deposit", form.deposit);
       formData.append("description", form.description);
       formData.append("images", form.images || ""); // URL string
-
+      formData.append("existingImages", JSON.stringify(existingImages));
       // ✅ append files safely
       appendFiles(formData, form.imageFiles);
 
@@ -150,7 +206,6 @@ const OwnerRooms = () => {
       setForm({
         property_id: "",
         name: "",
-        code: "",
         price_monthly: "",
         price_term: "",
         has_ac: 0,
@@ -166,18 +221,43 @@ const OwnerRooms = () => {
       console.error(err);
       showToast(
         err.response?.data?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
-        "error"
+        "error",
       );
     }
   };
 
   const handleEdit = (room) => {
     setEditingId(room.id);
+
+    setExistingImages(
+      Array.isArray(room.images)
+        ? room.images.filter((img) => img.startsWith("/uploads/"))
+        : room.images && room.images.startsWith("/uploads/")
+          ? [room.images]
+          : [],
+    );
+
     setForm({
       ...room,
-      property_id: room.property_id ?? "", // ถ้า null ให้เป็น ""
+      property_id: room.property_id ?? "",
+      imageFiles: [], // ไฟล์ใหม่ยังไม่มี
     });
+
     setModalOpen(true);
+  };
+
+  // ลบรูปใหม่ที่เพิ่งเลือก
+  const removeNewImage = (index) => {
+    const updated = [...form.imageFiles];
+    updated.splice(index, 1);
+    setForm({ ...form, imageFiles: updated });
+  };
+
+  // ลบรูปเดิม
+  const removeExistingImage = (index) => {
+    const updated = [...existingImages];
+    updated.splice(index, 1);
+    setExistingImages(updated);
   };
 
   const handleDelete = async (id) => {
@@ -190,7 +270,7 @@ const OwnerRooms = () => {
       console.error(err);
       showToast(
         err.response?.data?.message || "เกิดข้อผิดพลาดในการลบข้อมูล",
-        "error"
+        "error",
       );
     }
   };
@@ -199,7 +279,6 @@ const OwnerRooms = () => {
     setForm({
       property_id: "",
       name: "",
-      code: "",
       price_monthly: "",
       price_term: "",
       has_ac: 0,
@@ -207,6 +286,7 @@ const OwnerRooms = () => {
       deposit: "",
       description: "",
       images: "",
+      imageFiles: [],
     });
     setEditingId(null);
     setModalOpen(true);
@@ -218,9 +298,9 @@ const OwnerRooms = () => {
 
   const filteredRooms = rooms
     .filter((room) => {
-      const matchesSearch =
-        room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        room.code.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (room.name || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
       const matchesProperty =
         filterProperty === "all" || room.property_id == filterProperty;
       return matchesSearch && matchesProperty;
@@ -230,8 +310,9 @@ const OwnerRooms = () => {
       if (a.property_id !== b.property_id) {
         return a.property_id - b.property_id;
       }
-      // ถ้า property เดียวกัน เรียงตามชื่อห้อง
-      return a.code.localeCompare(b.code, "th"); // ใช้ locale ไทย
+
+      // ถ้า property เดียวกัน เรียงตามชื่อห้องแทน
+      return (a.name || "").localeCompare(b.name || "", "th");
     });
 
   const getPropertyName = (propertyId) => {
@@ -418,7 +499,7 @@ const OwnerRooms = () => {
                     <div className="absolute top-2 left-2">
                       <span
                         className={`${getRoomStatusColor(
-                          r.status
+                          r.status,
                         )} text-white text-xs px-2 py-1 rounded-full`}
                       >
                         {getRoomStatusText(r.status)}
@@ -433,9 +514,9 @@ const OwnerRooms = () => {
                         <h3 className="text-xl font-bold font-kanit text-gray-800">
                           {r.name}
                         </h3>
-                        <p className="text-gray-600 text-sm">
+                        {/* <p className="text-gray-600 text-sm">
                           รหัสห้อง : {r.code}
-                        </p>
+                        </p> */}
                       </div>
                       <div className="flex space-x-2">
                         <button
@@ -458,7 +539,7 @@ const OwnerRooms = () => {
                     <div className="mb-3">
                       <p className="text-gray-600 text-sm flex items-center">
                         <i className="fas fa-building mr-2 text-indigo-500"></i>
-                        {getPropertyName(r.property_id)} 
+                        {getPropertyName(r.property_id)}
                       </p>
                     </div>
 
@@ -672,20 +753,6 @@ const OwnerRooms = () => {
                       />
                     </div>
                   </div>
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      รหัสห้อง
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      value={form.code}
-                      onChange={(e) =>
-                        setForm({ ...form, code: e.target.value })
-                      }
-                      required
-                    />
-                  </div> */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       ประเภทห้อง
@@ -743,25 +810,11 @@ const OwnerRooms = () => {
                       />
                     </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      รูปภาพ URL (คั่นด้วยเครื่องหมาย ,)
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      value={form.images}
-                      onChange={(e) =>
-                        setForm({ ...form, images: e.target.value })
-                      }
-                      placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                    />
-                  </div>
-
                   <div className="md:col-span-2 mt-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      อัพโหลดรูปภาพ (สามารถเลือกหลายไฟล์)
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      อัพโหลดรูปภาพ
                     </label>
+
                     <input
                       type="file"
                       multiple
@@ -769,10 +822,65 @@ const OwnerRooms = () => {
                       onChange={(e) =>
                         setForm({
                           ...form,
-                          imageFiles: Array.from(e.target.files),
+                          imageFiles: [
+                            ...form.imageFiles,
+                            ...Array.from(e.target.files),
+                          ],
                         })
                       }
                     />
+
+                    {/* แสดงรูปเดิม */}
+                    {existingImages.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-600 mb-2">
+                          รูปภาพเดิม
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                          {existingImages.map((img, index) => (
+                            <div key={index} className="relative w-24 h-24">
+                              <img
+                                src={`${import.meta.env.VITE_API_URL}${img}`}
+                                className="w-full h-full object-cover rounded-lg border"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeExistingImage(index)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* แสดงรูปใหม่ */}
+                    {form.imageFiles?.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-600 mb-2">
+                          รูปภาพใหม่
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                          {form.imageFiles.map((file, index) => (
+                            <div key={index} className="relative w-24 h-24">
+                              <img
+                                src={URL.createObjectURL(file)}
+                                className="w-full h-full object-cover rounded-lg border"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeNewImage(index)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">

@@ -14,6 +14,15 @@ const ManageRooms = () => {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingProperties, setLoadingProperties] = useState(true);
+  const [toast, setToast] = useState({ show: false, message: "", type: "" });
+
+  const showToast = (type, message) => {
+    setToast({ show: true, type, message });
+
+    setTimeout(() => {
+      setToast({ show: false, message: "", type: "" });
+    }, 3000); // แสดง 3 วินาที
+  };
 
   const fetchProperties = async () => {
     try {
@@ -68,12 +77,19 @@ const ManageRooms = () => {
 
   const handleDelete = async (id) => {
     try {
-      await API.delete(`/rooms/${id}`);
+      const res = await API.delete(`/rooms/${id}`);
+
+      showToast("success", res.data.message || "ลบห้องสำเร็จ");
+
       setConfirmDelete(null);
       fetchRooms(selectedProperty.id);
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในการลบข้อมูล");
+
+      showToast(
+        "error",
+        err.response?.data?.message || "เกิดข้อผิดพลาดในการลบข้อมูล",
+      );
     }
   };
 
@@ -81,7 +97,7 @@ const ManageRooms = () => {
   const filteredProperties = properties.filter(
     (p) =>
       (p.name || "").toLowerCase().includes(propertySearch.toLowerCase()) ||
-      (p.address || "").toLowerCase().includes(propertySearch.toLowerCase())
+      (p.address || "").toLowerCase().includes(propertySearch.toLowerCase()),
   );
 
   // แก้ไขฟังก์ชัน filteredRooms โดยเพิ่มการตรวจสอบค่า null
@@ -92,7 +108,7 @@ const ManageRooms = () => {
       (r.price_monthly || "").toString().includes(search) ||
       (r.price_term || "").toString().includes(search) ||
       (r.billing_cycle || "").toLowerCase().includes(search.toLowerCase()) ||
-      (r.status || "").toLowerCase().includes(search.toLowerCase())
+      (r.status || "").toLowerCase().includes(search.toLowerCase()),
   );
 
   const getStatusBadge = (status) => {
@@ -205,30 +221,11 @@ const ManageRooms = () => {
                   {/* Property Image */}
                   <div className="h-48 overflow-hidden">
                     <img
-                      src={(() => {
-                        if (!p.image) return "/default-dorm.jpg";
-
-                        // กรณีเป็น string
-                        if (typeof p.image === "string") {
-                          if (
-                            p.image.startsWith("http") ||
-                            p.image.startsWith("https")
-                          ) {
-                            return p.image; // URL ภายนอก
-                          }
-                          if (p.image.startsWith("/uploads")) {
-                            return `http://localhost:5000${p.image}`; // Path จาก backend
-                          }
-                          return p.image; // fallback สำหรับ string อื่น ๆ
-                        }
-
-                        // กรณีเป็น File object
-                        if (p.image instanceof File) {
-                          return URL.createObjectURL(p.image);
-                        }
-
-                        return "/default-dorm.jpg"; // default fallback
-                      })()}
+                      src={
+                        p.image
+                          ? `http://localhost:5000${p.image}`
+                          : "/default-dorm.jpg"
+                      }
                       alt={p.name}
                       className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       onError={(e) => {
@@ -269,6 +266,17 @@ const ManageRooms = () => {
 
   return (
     <Layout role="admin" showFooter={false} showNav={false}>
+      {toast.show && (
+        <div className="fixed top-5 right-5 z-50">
+          <div
+            className={`px-6 py-3 rounded-lg shadow-lg text-white transition-all duration-300
+      ${toast.type === "success" ? "bg-green-500" : "bg-red-500"}`}
+          >
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       {/* Sticky Header with Gradient Background */}
       <div className="sticky top-0 z-10 bg-orange-400 text-white shadow-lg pb-4 pt-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -368,15 +376,11 @@ const ManageRooms = () => {
               const statusBadge = getStatusBadge(r.status);
               const imageSrc = Array.isArray(r.images)
                 ? r.images.length > 0
-                  ? r.images[0].startsWith("http")
-                    ? r.images[0]
-                    : `http://localhost:5000${r.images[0]}`
+                  ? `http://localhost:5000${r.images[0]}`
                   : "/default-room.jpg"
                 : r.images
-                ? r.images.startsWith("http")
-                  ? r.images
-                  : `http://localhost:5000${r.images}`
-                : "/default-room.jpg";
+                  ? `http://localhost:5000${r.images}`
+                  : "/default-room.jpg";
 
               return (
                 <div
@@ -541,21 +545,6 @@ const ManageRooms = () => {
                     required
                   />
                 </div>
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    รหัสห้อง
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="รหัสห้อง"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    value={editData?.code || ""}
-                    onChange={(e) =>
-                      setEditData({ ...editData, code: e.target.value })
-                    }
-                    required
-                  />
-                </div> */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">

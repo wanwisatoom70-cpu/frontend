@@ -33,7 +33,6 @@ const OwnerTenant = () => {
   });
   // เพิ่ม state สำหรับเก็บห้องที่แสดงในการ์ด
   const [expandedRoomCards, setExpandedRoomCards] = useState({});
-  const [showGuestsOnly, setShowGuestsOnly] = useState(false);
   const [confirmModal, setConfirmModal] = useState({
     show: false,
     message: "",
@@ -87,7 +86,7 @@ const OwnerTenant = () => {
         console.error(err);
       }
     },
-    [editingTenant]
+    [editingTenant],
   );
 
   useEffect(() => {
@@ -213,14 +212,74 @@ const OwnerTenant = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // ตรวจสอบว่า username ว่างหรือไม่
+    // ===== Validation =====
+
+    if (!form.username.trim()) {
+      toast.error("กรุณากรอกชื่อผู้ใช้");
+      return;
+    }
+
+    if (!form.fullname.trim()) {
+      toast.error("กรุณากรอกชื่อ-นามสกุล");
+      return;
+    }
+
+    // รหัสผ่าน
+    if (!editingTenant && !form.password_hash) {
+      toast.error("กรุณากรอกรหัสผ่าน");
+      return;
+    }
+
+    if (form.password_hash && form.password_hash.length < 6) {
+      toast.error("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
+      return;
+    }
+
+    // username valid
     if (
       !usernameStatus.valid &&
       !(editingTenant && editingTenant.username === form.username)
     ) {
-      alert("กรุณาตรวจสอบ username อีกครั้ง");
+      toast.error("กรุณาตรวจสอบ username อีกครั้ง");
       return;
     }
+
+    // เลือกหอ
+    if (form.selectedProperties.length === 0) {
+      toast.error("กรุณาเลือกหอพัก");
+      return;
+    }
+
+    // เลือกห้อง
+    if (form.selectedRooms.length === 0) {
+      toast.error("กรุณาเลือกห้อง");
+      return;
+    }
+
+    // วันที่
+    if (!form.start_date) {
+      toast.error("กรุณาเลือกวันที่เริ่มสัญญา");
+      return;
+    }
+
+    if (!form.end_date) {
+      toast.error("กรุณาเลือกวันที่สิ้นสุดสัญญา");
+      return;
+    }
+
+    if (form.end_date <= form.start_date) {
+      toast.error("วันที่สิ้นสุดต้องมากกว่าวันที่เริ่ม");
+      return;
+    }
+
+    // billing cycle
+    const roomId = form.selectedRooms[0];
+    if (!roomBillingCycles[roomId]) {
+      toast.error("กรุณาเลือกประเภทการเช่า");
+      return;
+    }
+
+    // ===== End Validation =====
 
     try {
       const tenantData = {
@@ -236,7 +295,7 @@ const OwnerTenant = () => {
           Object.entries(roomBillingCycles).map(([roomId, value]) => [
             roomId,
             value === "เดือน" ? "monthly" : "term",
-          ])
+          ]),
         ),
       };
 
@@ -300,7 +359,9 @@ const OwnerTenant = () => {
         fetchTenants();
       } catch (err) {
         console.error(err);
-        toast.error("เกิดข้อผิดพลาดในการลบข้อมูล");
+        toast.error(
+          err.response?.data?.message || "เกิดข้อผิดพลาดในการลบข้อมูล",
+        );
       }
     });
   };
@@ -314,33 +375,30 @@ const OwnerTenant = () => {
   };
 
   const filteredTenants = tenants.filter((tenant) => {
-    // ถ้า checkbox ถูกติ๊ก ให้แสดงเฉพาะ pending
-    if (showGuestsOnly) {
-      return tenant.role === "guest";
-    }
-
-    // ถ้า checkbox ไม่ติ๊ก แสดงเฉพาะ tenant (ไม่เอา guest)
+    // แสดงเฉพาะ tenant เท่านั้น
     if (tenant.role !== "tenant") return false;
 
     const username = tenant.username?.toLowerCase() || "";
     const fullname = tenant.fullname?.toLowerCase() || "";
     const email = tenant.email?.toLowerCase() || "";
 
+    const searchLower = searchTerm.toLowerCase();
+
     const bookingsMatch = tenant.bookings?.some((booking) => {
       const propertyName = booking.property_name?.toLowerCase() || "";
       const roomName = booking.room_name?.toLowerCase() || "";
       const roomCode = booking.room_code?.toLowerCase() || "";
       return (
-        propertyName.includes(searchTerm.toLowerCase()) ||
-        roomName.includes(searchTerm.toLowerCase()) ||
-        roomCode.includes(searchTerm.toLowerCase())
+        propertyName.includes(searchLower) ||
+        roomName.includes(searchLower) ||
+        roomCode.includes(searchLower)
       );
     });
 
     return (
-      username.includes(searchTerm.toLowerCase()) ||
-      fullname.includes(searchTerm.toLowerCase()) ||
-      email.includes(searchTerm.toLowerCase()) ||
+      username.includes(searchLower) ||
+      fullname.includes(searchLower) ||
+      email.includes(searchLower) ||
       bookingsMatch
     );
   });
@@ -382,23 +440,6 @@ const OwnerTenant = () => {
                 <i className="fas fa-search"></i>
               </div>
             </div>
-
-            {/* Checkbox */}
-            {/* <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="showGuestsOnly"
-                checked={showGuestsOnly}
-                onChange={(e) => setShowGuestsOnly(e.target.checked)}
-                className="cursor-pointer"
-              />
-              <label
-                htmlFor="showGuestsOnly"
-                className="text-gray-700 cursor-pointer"
-              >
-                ผู้ที่รออนุมัติ
-              </label>
-            </div> */}
           </div>
         </div>
       </div>
@@ -459,7 +500,7 @@ const OwnerTenant = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTenants.map((t) => (
+            {filteredTenants.map((t, index) => (
               <div
                 key={t.id}
                 className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1"
@@ -469,11 +510,7 @@ const OwnerTenant = () => {
                   <div className="flex items-center">
                     {t.profile_image ? (
                       <img
-                        src={
-                          t.profile_image.startsWith("http")
-                            ? t.profile_image
-                            : `http://localhost:5000${t.profile_image}`
-                        }
+                        src={`http://localhost:5000${t.profile_image}`}
                         alt={t.fullname}
                         className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md"
                       />
@@ -511,12 +548,6 @@ const OwnerTenant = () => {
                         <span className="text-purple-700">{t.line}</span>
                       </div>
                     )}
-                    {t.age && (
-                      <div className="flex items-center bg-yellow-50 rounded-full px-3 py-1 text-xs">
-                        <i className="fas fa-birthday-cake text-yellow-500 mr-1"></i>
-                        <span className="text-yellow-700">{t.age} ปี</span>
-                      </div>
-                    )}
                     {t.id_line && (
                       <div className="flex items-center bg-purple-50 rounded-full px-3 py-1 text-xs">
                         <i className="fab fa-line text-purple-500 mr-1"></i>
@@ -536,7 +567,7 @@ const OwnerTenant = () => {
                         {t.bookings
                           .slice(
                             0,
-                            expandedRoomCards[t.id] ? t.bookings.length : 1
+                            expandedRoomCards[t.id] ? t.bookings.length : 1,
                           )
                           .map((booking, index) => (
                             <div
@@ -573,19 +604,19 @@ const OwnerTenant = () => {
                                     booking.status === "confirmed"
                                       ? "bg-green-100 text-green-700"
                                       : booking.status === "pending"
-                                      ? "bg-yellow-100 text-yellow-700"
-                                      : "bg-red-100 text-red-700"
+                                        ? "bg-yellow-100 text-yellow-700"
+                                        : "bg-red-100 text-red-700"
                                   }`}
                                 >
                                   {booking.status === "confirmed"
                                     ? "ยืนยันแล้ว"
-                                    : booking.status === "pending"
-                                    ? "รอดำเนินการ"
-                                    : "ยกเลิก"}
+                                    : booking.status === "cancelled"
+                                      ? "ยกเลิก"
+                                      : "รอดำเนินการ"}
                                 </span>
                                 <span className="text-xs text-gray-500">
                                   {new Date(
-                                    booking.created_at
+                                    booking.created_at,
                                   ).toLocaleDateString("th-TH", {
                                     year: "numeric",
                                     month: "short",
@@ -628,11 +659,7 @@ const OwnerTenant = () => {
                   {/* Action Buttons */}
                   <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                     <div className="text-xs text-gray-500">
-                      {" "}
-                      {new Date(t.created_at).toLocaleString("th-TH", {
-                        dateStyle: "long",
-                        timeStyle: "short",
-                      })}
+                      ลำดับที่ {index + 1}
                     </div>
 
                     <div className="flex space-x-2">
@@ -704,8 +731,8 @@ const OwnerTenant = () => {
                           usernameStatus.message && !usernameStatus.valid
                             ? "border-red-500"
                             : usernameStatus.valid
-                            ? "border-green-500"
-                            : "border-gray-300"
+                              ? "border-green-500"
+                              : "border-gray-300"
                         }`}
                         value={form.username}
                         onChange={(e) =>
@@ -792,10 +819,18 @@ const OwnerTenant = () => {
                       </label>
                       <input
                         type="date"
+                        min={new Date().toISOString().split("T")[0]} // ❗ห้ามย้อนหลัง
                         className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         value={form.start_date}
                         onChange={(e) =>
-                          setForm({ ...form, start_date: e.target.value })
+                          setForm({
+                            ...form,
+                            start_date: e.target.value,
+                            end_date:
+                              form.end_date && form.end_date <= e.target.value
+                                ? ""
+                                : form.end_date, // ถ้า end_date น้อยกว่า start ให้ reset
+                          })
                         }
                       />
                     </div>
@@ -806,6 +841,16 @@ const OwnerTenant = () => {
                       </label>
                       <input
                         type="date"
+                        min={
+                          form.start_date
+                            ? new Date(
+                                new Date(form.start_date).getTime() + 86400000,
+                              )
+                                .toISOString()
+                                .split("T")[0]
+                            : ""
+                        } // ต้องมากกว่า start_date 1 วัน
+                        disabled={!form.start_date} // ยังไม่เลือกวันเริ่ม ห้ามเลือกวันสิ้นสุด
                         className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         value={form.end_date}
                         onChange={(e) =>
@@ -814,21 +859,23 @@ const OwnerTenant = () => {
                       />
                     </div>
 
-                    {/* <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        สถานะสัญญา
-                      </label>
-                      <select
-                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        value={form.status}
-                        onChange={(e) =>
-                          setForm({ ...form, status: e.target.value })
-                        }
-                      >
-                        <option value="confirmed">ยืนยันแล้ว</option>
-                        <option value="pending">รอดำเนินการ</option>
-                      </select>
-                    </div> */}
+                    {editingTenant && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          สถานะสัญญา
+                        </label>
+                        <select
+                          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          value={form.status}
+                          onChange={(e) =>
+                            setForm({ ...form, status: e.target.value })
+                          }
+                        >
+                          <option value="confirmed">ยืนยันแล้ว</option>
+                          <option value="cancelled">ยกเลิก</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -852,7 +899,7 @@ const OwnerTenant = () => {
                             name="property"
                             id={`property-${property.id}`}
                             checked={form.selectedProperties.includes(
-                              property.id
+                              property.id,
                             )}
                             onChange={() => handlePropertyChange(property.id)}
                             className="h-4 w-4 text-indigo-600 rounded"

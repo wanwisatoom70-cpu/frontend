@@ -22,10 +22,12 @@ const ManagePackages = ({ role }) => {
   const [currentPackage, setCurrentPackage] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [packageToDelete, setPackageToDelete] = useState(null);
+  const [rooms, setRooms] = useState([]);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+
   // State สำหรับผู้รับ
-  const [receivers, setReceivers] = useState([]); // จาก backend
   const [selectedReceivers, setSelectedReceivers] = useState(
-    role === "tenant" ? [] : []
+    role === "tenant" ? [] : [],
   );
 
   // Form states
@@ -46,10 +48,9 @@ const ManagePackages = ({ role }) => {
     const fetchReceivers = async () => {
       try {
         const res = await API.get("/users/package-receivers");
-        setReceivers(res.data.map((u) => ({ value: u.id, label: u.fullname })));
         if (role === "tenant") {
           setSelectedReceivers(
-            res.data.map((u) => ({ value: u.id, label: u.fullname }))
+            res.data.map((u) => ({ value: u.id, label: u.fullname })),
           );
         }
       } catch (err) {
@@ -83,12 +84,41 @@ const ManagePackages = ({ role }) => {
     const fetchPackagesAndProperties = async () => {
       try {
         setLoading(true);
-        const [pkgRes, propRes] = await Promise.all([
+        const [pkgRes, propRes, roomRes] = await Promise.all([
           API.get("/packages"),
           API.get("/properties/my"),
+          API.get("/rooms/my"),
         ]);
+
         setPackages(pkgRes.data);
         setProperties(propRes.data);
+
+        const rentedRooms = roomRes.data
+          .filter((r) => r.tenantInfo?.tenantId) // ✅ เอาเฉพาะห้องที่มีผู้เช่า
+          .map((r) => ({
+            value: r.id,
+            label: `ห้อง ${r.name}`,
+            tenant_id: r.tenantInfo.tenantId,
+            tenant_name: r.tenantInfo.tenantName,
+            property_name: r.property_name, // ต้องมีจาก backend
+          }));
+
+        // จัดกลุ่มตามหอ
+        const groupedRooms = rentedRooms.reduce((acc, room) => {
+          const group = acc.find((g) => g.label === room.property_name);
+
+          if (group) {
+            group.options.push(room);
+          } else {
+            acc.push({
+              label: room.property_name,
+              options: [room],
+            });
+          }
+
+          return acc;
+        }, []);
+        setRooms(groupedRooms);
       } catch (error) {
         console.error(error);
       } finally {
@@ -124,20 +154,38 @@ const ManagePackages = ({ role }) => {
     }
   };
 
+  useEffect(() => {
+    if (showEditModal && currentPackage && rooms.length > 0) {
+      let foundRoom = null;
+
+      rooms.forEach((group) => {
+        const room = group.options.find(
+          (r) => r.value === currentPackage.room_id,
+        );
+        if (room) foundRoom = room;
+      });
+
+      if (foundRoom) {
+        setSelectedRoom(foundRoom);
+        setSelectedReceivers([
+          {
+            value: foundRoom.tenant_id,
+            label: foundRoom.tenant_name,
+          },
+        ]);
+      }
+    }
+  }, [showEditModal, currentPackage, rooms]);
+
   const openEditModal = (pkg) => {
     setCurrentPackage(pkg);
+
     setEditForm({
       name: pkg.name,
       description: pkg.description,
       price: pkg.price || "",
       property_id: pkg.property_id || "",
     });
-
-    // ดึง receivers ของพัสดุมาแสดง
-    const preSelectedReceivers = pkg.user_id
-      ? [{ value: pkg.user_id, label: pkg.user_fullname }]
-      : [];
-    setSelectedReceivers(preSelectedReceivers);
     setShowEditModal(true);
   };
 
@@ -152,6 +200,7 @@ const ManagePackages = ({ role }) => {
       await API.put(`/packages/${currentPackage.id}`, {
         ...editForm,
         user_id: selectedReceivers[0].value, // แปลงเป็น user_id ตรงๆ
+        room_id: selectedRoom?.value,
       });
 
       // update local state
@@ -164,8 +213,8 @@ const ManagePackages = ({ role }) => {
                 user_id: selectedReceivers[0].value,
                 user_fullname: selectedReceivers[0].label,
               }
-            : pkg
-        )
+            : pkg,
+        ),
       );
 
       setShowEditModal(false);
@@ -239,6 +288,7 @@ const ManagePackages = ({ role }) => {
     setAddForm({ name: "", description: "", price: "", property_id: "" });
     setSelectedReceivers(role === "tenant" ? [] : []);
     setReceiverProperty(null); // รีเซ็ตค่าหอ
+    setSelectedRoom(null);
   };
 
   const filteredPackages = packages.filter((pkg) => {
@@ -299,8 +349,8 @@ const ManagePackages = ({ role }) => {
                   {tab === "all"
                     ? "ทั้งหมด"
                     : tab === "pending"
-                    ? "ยังไม่ได้รับ"
-                    : "รับแล้ว"}
+                      ? "ยังไม่ได้รับ"
+                      : "รับแล้ว"}
                 </button>
               ))}
             </div>
@@ -375,12 +425,13 @@ const ManagePackages = ({ role }) => {
                         ราคา: {pkg.price ? `฿${pkg.price}` : "ไม่ระบุ"}
                       </p> */}
                       <div>
-                      <p className="text-sm text-gray-600">
-                        วันที่บันทึก: {formatDate(pkg.created_at)}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        วันที่รับ: {pkg.received_at ? formatDate(pkg.received_at) : "-"}
-                      </p>
+                        <p className="text-sm text-gray-600">
+                          วันที่บันทึก: {formatDate(pkg.created_at)}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          วันที่รับ:{" "}
+                          {pkg.received_at ? formatDate(pkg.received_at) : "-"}
+                        </p>
                       </div>
                     </div>
 
@@ -486,22 +537,45 @@ const ManagePackages = ({ role }) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ห้องพัก
+                    ห้อง
                   </label>
 
                   <Select
-                    isMulti={false} // ไม่ให้เลือกหลายคน
-                    options={receivers} // ตัวเลือกจาก backend
-                    value={selectedReceivers} // ค่าปัจจุบัน
-                    onChange={(selected) =>
-                      setSelectedReceivers(selected ? [selected] : [])
-                    } // เก็บเป็น array 1 คน
+                    options={rooms}
+                    value={selectedRoom}
+                    onChange={(room) => {
+                      setSelectedRoom(room);
+
+                      if (room?.tenant_id) {
+                        setSelectedReceivers([
+                          {
+                            value: room.tenant_id,
+                            label: room.tenant_name,
+                          },
+                        ]);
+                      } else {
+                        setSelectedReceivers([]);
+                      }
+                    }}
                     isSearchable
-                    placeholder="เลือกห้องพัก"
+                    placeholder="เลือกห้อง"
                     className="basic-single"
                     classNamePrefix="select"
                   />
                 </div>
+                {selectedReceivers.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ผู้เช่า
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedReceivers[0].label}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -530,19 +604,6 @@ const ManagePackages = ({ role }) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   ></textarea>
                 </div>
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ราคา
-                  </label>
-                  <input
-                    type="number"
-                    value={editForm.price}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, price: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div> */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     ทรัพย์สิน
@@ -563,14 +624,14 @@ const ManagePackages = ({ role }) => {
                         receiverProperty
                           ? null
                           : role === "add"
-                          ? setAddForm({
-                              ...addForm,
-                              property_id: e.target.value,
-                            })
-                          : setEditForm({
-                              ...editForm,
-                              property_id: e.target.value,
-                            });
+                            ? setAddForm({
+                                ...addForm,
+                                property_id: e.target.value,
+                              })
+                            : setEditForm({
+                                ...editForm,
+                                property_id: e.target.value,
+                              });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     >
@@ -623,23 +684,86 @@ const ManagePackages = ({ role }) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ห้องพัก
+                    ห้อง
                   </label>
 
                   <Select
-                    isMulti={false} // ไม่ให้เลือกหลายคน
-                    options={receivers} // ตัวเลือกจาก backend
-                    value={selectedReceivers} // ค่าปัจจุบัน
-                    onChange={(selected) =>
-                      setSelectedReceivers(selected ? [selected] : [])
-                    } // เก็บเป็น array 1 คน
+                    options={rooms} // ตอนนี้เป็น grouped แล้ว
+                    value={selectedRoom}
+                    onChange={(room) => {
+                      setSelectedRoom(room);
+
+                      if (room?.tenant_id) {
+                        setSelectedReceivers([
+                          {
+                            value: room.tenant_id,
+                            label: room.tenant_name,
+                          },
+                        ]);
+                      } else {
+                        setSelectedReceivers([]);
+                      }
+                    }}
                     isSearchable
-                    placeholder="เลือกห้องพัก"
+                    placeholder="เลือกห้อง"
                     className="basic-single"
                     classNamePrefix="select"
                   />
                 </div>
+                {selectedReceivers.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ผู้เช่า
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedReceivers[0].label}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                    />
+                  </div>
+                )}
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    หอพัก
+                  </label>
+                  {receiverProperty ? (
+                    // แสดง readonly ถ้ามีผู้เช่าแล้ว
+                    <input
+                      type="text"
+                      value={receiverProperty.name}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                    />
+                  ) : (
+                    // เลือกทรัพย์สินเองได้
+                    <select
+                      value={addForm.property_id || editForm.property_id}
+                      onChange={(e) => {
+                        receiverProperty
+                          ? null
+                          : role === "add"
+                            ? setAddForm({
+                                ...addForm,
+                                property_id: e.target.value,
+                              })
+                            : setEditForm({
+                                ...editForm,
+                                property_id: e.target.value,
+                              });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="">เลือกหอพัก</option>
+                      {properties.map((prop) => (
+                        <option key={prop.id} value={prop.id}>
+                          {prop.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     ชื่อพัสดุ
@@ -666,59 +790,6 @@ const ManagePackages = ({ role }) => {
                     rows="3"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   ></textarea>
-                </div>
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ราคา
-                  </label>
-                  <input
-                    type="number"
-                    value={addForm.price}
-                    onChange={(e) =>
-                      setAddForm({ ...addForm, price: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div> */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    หอพัก
-                  </label>
-                  {receiverProperty ? (
-                    // แสดง readonly ถ้ามีผู้เช่าแล้ว
-                    <input
-                      type="text"
-                      value={receiverProperty.name}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-                    />
-                  ) : (
-                    // เลือกทรัพย์สินเองได้
-                    <select
-                      value={addForm.property_id || editForm.property_id}
-                      onChange={(e) => {
-                        receiverProperty
-                          ? null
-                          : role === "add"
-                          ? setAddForm({
-                              ...addForm,
-                              property_id: e.target.value,
-                            })
-                          : setEditForm({
-                              ...editForm,
-                              property_id: e.target.value,
-                            });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      <option value="">เลือกหอพัก</option>
-                      {properties.map((prop) => (
-                        <option key={prop.id} value={prop.id}>
-                          {prop.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
                 </div>
               </div>
               <div className="mt-6 flex justify-end space-x-3">

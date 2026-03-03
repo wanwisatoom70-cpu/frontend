@@ -24,6 +24,9 @@ const OwnerProperties = () => {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nameExists, setNameExists] = useState(false);
+  const [checkingName, setCheckingName] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // ฟังก์ชันสำหรับแสดง Toast Notification
   const showToast = useCallback((message, type = "success") => {
@@ -52,8 +55,76 @@ const OwnerProperties = () => {
     fetchProperties();
   }, [fetchProperties]);
 
+  const checkDuplicateName = useCallback(
+    async (name) => {
+      if (!name.trim()) {
+        setNameExists(false);
+        return;
+      }
+
+      try {
+        setCheckingName(true);
+
+        const res = await API.get("/properties/check-name", {
+          params: {
+            name,
+            id: editingId || undefined, // ถ้าแก้ไข จะไม่เช็คตัวเอง
+          },
+        });
+
+        setNameExists(res.data.exists);
+      } catch (err) {
+        console.error("check name error:", err);
+      } finally {
+        setCheckingName(false);
+      }
+    },
+    [editingId],
+  );
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      checkDuplicateName(form.name);
+    }, 500);
+
+    return () => clearTimeout(delay);
+  }, [form.name, checkDuplicateName]);
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!form.name.trim()) newErrors.name = "กรุณากรอกชื่ออสังหาริมทรัพย์";
+    if (!form.address.trim()) newErrors.address = "กรุณากรอกที่อยู่";
+    if (!form.description.trim()) newErrors.description = "กรุณากรอกรายละเอียด";
+    if (!form.electric_rate) newErrors.electric_rate = "กรุณากรอกค่าไฟฟ้า";
+    if (!form.water_rate) newErrors.water_rate = "กรุณากรอกค่าน้ำ";
+
+    // กรณีเพิ่มใหม่ต้องมีรูป
+    if (!editingId && !form.file && !form.image)
+      newErrors.image = "กรุณาอัปโหลดรูปภาพ";
+    if (parseFloat(form.electric_rate) <= 0)
+      newErrors.electric_rate = "ค่าไฟต้องมากกว่า 0";
+
+    if (parseFloat(form.water_rate) <= 0)
+      newErrors.water_rate = "ค่าน้ำต้องมากกว่า 0";
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      showToast("กรุณากรอกข้อมูลให้ครบถ้วน", "error");
+      return;
+    }
+
+    if (nameExists) {
+      showToast("ชื่ออสังหาริมทรัพย์นี้ถูกใช้แล้ว", "error");
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -98,7 +169,7 @@ const OwnerProperties = () => {
       console.error(err);
       showToast(
         err.response?.data?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
-        "error"
+        "error",
       );
     } finally {
       setIsSubmitting(false);
@@ -107,6 +178,8 @@ const OwnerProperties = () => {
 
   const handleEdit = (property) => {
     setEditingId(property.id);
+    setErrors({}); // ✅ เพิ่ม
+    setNameExists(false); // ✅ เพิ่ม
 
     setForm({
       name: property.name || "",
@@ -128,11 +201,21 @@ const OwnerProperties = () => {
       setConfirmDelete(null);
       fetchProperties();
     } catch (err) {
-      console.error(err);
-      showToast(
-        err.response?.data?.message || "เกิดข้อผิดพลาดในการลบข้อมูล",
-        "error"
-      );
+      if (err.response?.data?.reasons) {
+        const r = err.response.data.reasons;
+        let msg = "ไม่สามารถลบได้ เนื่องจากยังมี:\n";
+
+        if (r.staff) msg += `- พนักงาน ${r.staff} คน\n`;
+        if (r.rooms) msg += `- ห้อง ${r.rooms} ห้อง\n`;
+        if (r.bookings) msg += `- การเช่า/จอง ${r.bookings} รายการ\n`;
+
+        showToast(msg, "error");
+      } else {
+        showToast(
+          err.response?.data?.message || "เกิดข้อผิดพลาดในการลบข้อมูล",
+          "error",
+        );
+      }
     }
   };
 
@@ -147,11 +230,15 @@ const OwnerProperties = () => {
       water_rate: "",
     });
     setEditingId(null);
+    setErrors({}); // ✅
+    setNameExists(false); // ✅ กันชื่อซ้ำค้าง
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
+    setErrors({}); // ✅ ล้าง error ทุกครั้งที่ปิด
+    setNameExists(false); // ✅ ล้างชื่อซ้ำ
   };
 
   const openDetailModal = (property) => {
@@ -167,8 +254,31 @@ const OwnerProperties = () => {
   const filteredProperties = properties.filter(
     (property) =>
       property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.address.toLowerCase().includes(searchTerm.toLowerCase())
+      property.address.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const handleRateChange = (e, field) => {
+    let value = e.target.value;
+
+    // อนุญาตเฉพาะตัวเลข + จุดทศนิยม
+    if (!/^\d*\.?\d{0,2}$/.test(value)) return;
+
+    // ❌ กัน 0 นำหน้า (ยกเว้น 0.x)
+    if (/^0\d+/.test(value)) return;
+
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    // ลบ error ถ้ามี
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: undefined,
+      }));
+    }
+  };
 
   return (
     <Layout showFooter={false} showNav={false}>
@@ -341,7 +451,7 @@ const OwnerProperties = () => {
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <div className="text-xs text-gray-500">ID: {p.id}</div>
+                    {/* <div className="text-xs text-gray-500">ลำดับ: {p.id}</div> */}
                     <button
                       onClick={() => openDetailModal(p)}
                       className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center"
@@ -382,11 +492,34 @@ const OwnerProperties = () => {
                   </label>
                   <input
                     type="text"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full p-2 border rounded-lg focus:ring-2 ${
+                      nameExists
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                    }`}
                     value={form.name ?? ""}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
                   />
+                  {checkingName && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      <i className="fas fa-spinner fa-spin mr-1"></i>
+                      กำลังตรวจสอบชื่อ...
+                    </p>
+                  )}
+
+                  {nameExists && (
+                    <p className="text-xs text-red-500 mt-1">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      ชื่ออสังหาริมทรัพย์นี้ถูกใช้แล้ว
+                    </p>
+                  )}
+                  {errors.name && (
+                    <p className="text-xs text-red-500 mt-1">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.name}
+                    </p>
+                  )}
                 </div>
 
                 {/* Address */}
@@ -403,6 +536,12 @@ const OwnerProperties = () => {
                     rows="2"
                     required
                   />
+                  {errors.address && (
+                    <p className="text-xs text-red-500 mt-1">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.address}
+                    </p>
+                  )}
                 </div>
 
                 {/* Image Upload Section */}
@@ -416,16 +555,32 @@ const OwnerProperties = () => {
                     type="file"
                     accept="image/*"
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-2"
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const selectedFile = e.target.files[0];
+
                       setForm({
                         ...form,
-                        file: e.target.files[0],
-                        image: e.target.files[0]
-                          ? URL.createObjectURL(e.target.files[0])
+                        file: selectedFile,
+                        image: selectedFile
+                          ? URL.createObjectURL(selectedFile)
                           : "",
-                      })
-                    }
+                      });
+
+                      // ✅ ลบ error image ทันทีเมื่อเลือกรูป
+                      if (errors.image) {
+                        setErrors((prev) => ({
+                          ...prev,
+                          image: undefined,
+                        }));
+                      }
+                    }}
                   />
+                  {errors.image && (
+                    <p className="text-xs text-red-500 mt-1">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.image}
+                    </p>
+                  )}
 
                   {/* Image Preview */}
                   {form.image && (
@@ -433,7 +588,7 @@ const OwnerProperties = () => {
                       <img
                         src={
                           form.image.startsWith("/uploads")
-                            ? `http://localhost:5000${form.image}`
+                            ? `${import.meta.env.VITE_API_URL}${form.image}`
                             : form.image || "/default-dorm.jpg"
                         }
                         alt="Preview"
@@ -455,11 +610,21 @@ const OwnerProperties = () => {
                   <textarea
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     value={form.description}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setForm({ ...form, description: e.target.value });
+
+                      if (errors.description) {
+                        setErrors({ ...errors, description: undefined });
+                      }
+                    }}
                     rows="3"
                   />
+                  {errors.description && (
+                    <p className="text-xs text-red-500 mt-1">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.description}
+                    </p>
+                  )}
                 </div>
 
                 {/* Electric / Water Rate */}
@@ -468,30 +633,38 @@ const OwnerProperties = () => {
                     ค่าไฟฟ้า (บาท/หน่วย)
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     value={form.electric_rate ?? ""}
-                    onChange={(e) =>
-                      setForm({ ...form, electric_rate: e.target.value })
-                    }
+                    onChange={(e) => handleRateChange(e, "electric_rate")}
                     required
                   />
+                  {errors.electric_rate && (
+                    <p className="text-xs text-red-500 mt-1">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.electric_rate}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     ค่าน้ำ (บาท/หน่วย)
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     value={form.water_rate ?? ""}
-                    onChange={(e) =>
-                      setForm({ ...form, water_rate: e.target.value })
-                    }
+                    onChange={(e) => handleRateChange(e, "water_rate")}
                     required
                   />
+                  {errors.water_rate && (
+                    <p className="text-xs text-red-500 mt-1">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {errors.water_rate}
+                    </p>
+                  )}
                 </div>
 
                 {/* Buttons */}
@@ -505,9 +678,9 @@ const OwnerProperties = () => {
                   </button>
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || nameExists}
                     className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
-                      isSubmitting
+                      isSubmitting || nameExists
                         ? "bg-gray-400 text-white cursor-not-allowed"
                         : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:shadow-md"
                     }`}

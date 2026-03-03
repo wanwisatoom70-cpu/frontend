@@ -72,7 +72,9 @@ const PropertyDetail = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      toast.success("✅ จองห้องเรียบร้อยแล้ว (รอการยืนยันจากเจ้าของหรือพนักงาน)");
+      toast.success(
+        "✅ จองห้องเรียบร้อยแล้ว (รอการยืนยันจากเจ้าของหรือพนักงาน)",
+      );
       setShowConfirmModal(false);
       setBillingCycle("");
       setMoveInDate("");
@@ -246,9 +248,7 @@ const PropertyDetail = () => {
                   <img
                     src={
                       property.image
-                        ? property.image.startsWith("http")
-                          ? property.image
-                          : `http://localhost:5000${property.image}`
+                        ? `${import.meta.env.VITE_API_URL}${property.image}`
                         : "/default-dorm.jpg"
                     }
                     alt={property.name}
@@ -306,6 +306,7 @@ const PropertyDetail = () => {
 
                   <div className="flex space-x-4">
                     <button
+                    disabled
                       className="flex-1 bg-gradient-to-r from-primary to-accent text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300"
                       onClick={() => {
                         const token = localStorage.getItem("token");
@@ -426,7 +427,7 @@ const PropertyDetail = () => {
                                     {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </div>
@@ -440,7 +441,7 @@ const PropertyDetail = () => {
                                     {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </div>
@@ -486,15 +487,15 @@ const PropertyDetail = () => {
                                 room.status === "available"
                                   ? "bg-green-100 text-green-800"
                                   : room.status === "booked"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-yellow-100 text-yellow-800"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-yellow-100 text-yellow-800"
                               }`}
                             >
                               {room.status === "available"
                                 ? "ว่าง"
                                 : room.status === "booked"
-                                ? "ไม่ว่าง"
-                                : "ซ่อมบำรุง"}
+                                  ? "ไม่ว่าง"
+                                  : "ซ่อมบำรุง"}
                             </span>
                           </td>
                           <td className="px-6 py-4">
@@ -544,15 +545,15 @@ const PropertyDetail = () => {
                             room.status === "available"
                               ? "bg-green-100 text-green-600"
                               : room.status === "booked"
-                              ? "bg-yellow-100 text-yellow-600"
-                              : "bg-red-100 text-red-600"
+                                ? "bg-yellow-100 text-yellow-600"
+                                : "bg-red-100 text-red-600"
                           }`}
                         >
                           {room.status === "available"
                             ? "ว่าง"
                             : room.status === "booked"
-                            ? "ไม่ว่าง"
-                            : "กำลังซ่อมบำรุง"}
+                              ? "ไม่ว่าง"
+                              : "กำลังซ่อมบำรุง"}
                         </span>
                       </div>
 
@@ -640,7 +641,7 @@ const PropertyDetail = () => {
                   style={{ border: 0 }}
                   referrerPolicy="no-referrer-when-downgrade"
                   src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                    property.name + ", " + property.address
+                    property.name + ", " + property.address,
                   )}&output=embed&z=15`}
                   allowFullScreen
                 ></iframe>
@@ -649,7 +650,7 @@ const PropertyDetail = () => {
               <div className="mt-4 flex justify-center space-x-4">
                 <a
                   href={`https://maps.google.com/maps?q=${encodeURIComponent(
-                    property.name + ", " + property.address
+                    property.name + ", " + property.address,
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -660,7 +661,7 @@ const PropertyDetail = () => {
                 </a>
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                    property.name + ", " + property.address
+                    property.name + ", " + property.address,
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -691,7 +692,7 @@ const PropertyDetail = () => {
                       <div className="flex items-center mb-2">
                         <img
                           src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            review.user_name
+                            review.user_name,
                           )}&background=random&color=white`}
                           alt={review.user_name}
                           className="w-8 h-8 rounded-full mr-3"
@@ -728,7 +729,7 @@ const PropertyDetail = () => {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
-                          }
+                          },
                         )}
                       </div>
                     </div>
@@ -807,7 +808,7 @@ const PropertyDetail = () => {
                                     "en-US",
                                     {
                                       minimumFractionDigits: 2,
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </td>
@@ -818,7 +819,7 @@ const PropertyDetail = () => {
                                     "en-US",
                                     {
                                       minimumFractionDigits: 2,
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </td>
@@ -956,7 +957,7 @@ const PropertyDetail = () => {
                     {Number(
                       billingCycle === "monthly"
                         ? selectedRoom.price_monthly
-                        : selectedRoom.price_term
+                        : selectedRoom.price_term,
                     ).toLocaleString("en-US", {
                       minimumFractionDigits: 2,
                     })}
@@ -1022,9 +1023,7 @@ const PropertyDetail = () => {
             className="max-h-[90vh] max-w-[90vw] object-contain"
             src={
               property.image
-                ? property.image.startsWith("http")
-                  ? property.image
-                  : `http://localhost:5000${property.image}`
+                ? `${import.meta.env.VITE_API_URL}${property.image}`
                 : "/default-dorm.jpg"
             }
             alt={property.name}
@@ -1051,8 +1050,8 @@ const PropertyDetail = () => {
                     selectedRoomImages.length === 1
                       ? "grid-cols-1"
                       : selectedRoomImages.length === 2
-                      ? "grid-cols-2"
-                      : "grid-cols-3"
+                        ? "grid-cols-2"
+                        : "grid-cols-3"
                   }`}
                 >
                   {selectedRoomImages.map((img, idx) => (
@@ -1061,11 +1060,7 @@ const PropertyDetail = () => {
                       className={`overflow-hidden rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 w-full`}
                     >
                       <img
-                        src={
-                          img.startsWith("http")
-                            ? img
-                            : `http://localhost:5000${img}`
-                        }
+                        src={`${import.meta.env.VITE_API_URL}${img}`}
                         alt={`Room image ${idx + 1}`}
                         className="w-full aspect-[4/3] object-cover transition-transform duration-300 hover:scale-105"
                       />
